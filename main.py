@@ -183,7 +183,6 @@ def main():
                 if is_collision(bacteria_position, food_position):
                     moved_steps -= food_energy
                     food_positions.remove(food_position)
-                    food_positions.append(generate_food(1)[0])
                     break
 
             pygame.draw.circle(screen, BACTERIA_COLOR, bacteria_position, BACTERIA_RADIUS)
