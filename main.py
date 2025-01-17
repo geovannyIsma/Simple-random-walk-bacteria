@@ -16,7 +16,7 @@ TRACE_OVERLAP_COLOR = (255, 0, 0)
 FOOD_COLOR = (255, 0, 255)
 
 FOOD_RADIUS = 5
-BACTERIA_RADIUS = 5
+BACTERIA_RADIUS = 6
 COLLISION_DISTANCE = FOOD_RADIUS + BACTERIA_RADIUS
 FPS = 1
 
@@ -27,9 +27,7 @@ pygame.display.set_caption("Simulación de Bacteria")
 clock = pygame.time.Clock()
 
 def generate_bacteria_start():
-    # Aparece aleatoriamente en una orilla alineada con la cuadrícula
     side = random.choice(["top", "bottom", "left", "right"])
-
     vertical = random.randint(0, (WIDTH) // GRID_SIZE)
     horizontal = random.randint(0, (HEIGHT) // GRID_SIZE)
 
@@ -43,8 +41,12 @@ def generate_bacteria_start():
         return WIDTH, horizontal * GRID_SIZE
 
 def generate_food(num_food):
-    return [(random.randint(0, (WIDTH - 1) // GRID_SIZE) * GRID_SIZE,
-             random.randint(0, (HEIGHT - 1) // GRID_SIZE) * GRID_SIZE) for _ in range(num_food)]
+    food_positions = []
+    while len(food_positions) < num_food:
+        x = random.randint(1, (WIDTH - GRID_SIZE) // GRID_SIZE - 1) * GRID_SIZE
+        y = random.randint(1, (HEIGHT - GRID_SIZE) // GRID_SIZE - 1) * GRID_SIZE
+        food_positions.append((x, y))
+    return food_positions
 
 def is_inside_screen(x, y):
     return 0 <= x < WIDTH and 0 <= y < HEIGHT
@@ -60,6 +62,7 @@ def draw_grid():
         pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, HEIGHT))
     for y in range(0, HEIGHT, GRID_SIZE):
         pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
+
 def solicitar_datos():
     def on_submit():
         try:
@@ -77,9 +80,9 @@ def solicitar_datos():
 
     root = tk.Tk()
     root.title("Configuración inicial")
-    root.geometry("280x90")  # Establecer tamaño específico
+    root.geometry("280x90")
     root.eval('tk::PlaceWindow . center')
-    root.resizable(False, False)  # Deshabilitar minimizar y maximizar
+    root.resizable(False, False)
 
     tk.Label(root, text="Número de ciclos:").grid(row=0, column=0)
     entry_cycles = tk.Entry(root)
@@ -107,18 +110,15 @@ def walk():
         return "right" if direccion == 1 else "left"
 
 def main():
-    solicitar_datos() # num_cycles, initial_life, food_energy, num_food
+    solicitar_datos()
     debug = True
 
-    # Generar comida
     food_positions = generate_food(num_food)
 
-    # Ciclo principal
     for cycle in range(num_cycles):
-        # Inicializar bacteria
         bacteria_position = generate_bacteria_start()
-        trace = {}
-        moved_steps = 0  # Inicializar en -1 para no contar el punto de aparición
+        trace = {bacteria_position: 1}  # Agregar la posición inicial al rastro
+        moved_steps = 0
 
         while moved_steps < initial_life:
             for event in pygame.event.get():
@@ -126,26 +126,20 @@ def main():
                     pygame.quit()
                     sys.exit()
 
-            # Dibujar fondo
             screen.fill(BACKGROUND_COLOR)
-            # Dibujar cuadrícula
             draw_grid()
-            # Dibujar comida
             for food_position in food_positions:
                 pygame.draw.circle(screen, FOOD_COLOR, food_position, FOOD_RADIUS)
 
-            # Dibujar trayectoria
             if debug:
                 for point, count in trace.items():
                     color = TRACE_OVERLAP_COLOR if count > 1 else TRACE_COLOR
                     pygame.draw.circle(screen, color, point, 3)
 
-            # Movimiento de la bacteria
             x, y = bacteria_position
             move = None
-            # verificar si se encuentra en una pared
+
             if x == 0 or x == WIDTH or y == 0 or y == HEIGHT:
-                # verificar si se encuentra en una esquina
                 if (x, y) in [(0, 0), (WIDTH, 0), (0, HEIGHT), (WIDTH, HEIGHT)]:
                     while move not in ["left", "up", "right", "down"]:
                         move = walk()
@@ -180,28 +174,22 @@ def main():
                 bacteria_position = new_position
                 moved_steps += 1
 
-                # Registrar trayectoria
                 if bacteria_position in trace:
                     trace[bacteria_position] += 1
                 else:
                     trace[bacteria_position] = 1
 
-            # Verificar si come comida
             for food_position in food_positions:
                 if is_collision(bacteria_position, food_position):
-                    moved_steps -= food_energy  # Reducir los pasos realizados
+                    moved_steps -= food_energy
                     food_positions.remove(food_position)
                     food_positions.append(generate_food(1)[0])
                     break
 
-            # Dibujar bacteria
             pygame.draw.circle(screen, BACTERIA_COLOR, bacteria_position, BACTERIA_RADIUS)
-
-            # Actualizar pantalla
             pygame.display.flip()
             clock.tick(FPS)
 
-    # Salir
     pygame.quit()
 
 if __name__ == "__main__":
