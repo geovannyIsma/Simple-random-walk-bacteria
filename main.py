@@ -69,8 +69,10 @@ def solicitar_datos():
             global num_cycles, initial_life, food_energy, num_food
             num_cycles = int(entry_cycles.get())
             initial_life = int(entry_life.get())
-            food_energy = initial_life
             num_food = int(entry_food.get())
+            if num_cycles <= 0 or initial_life <= 0 or num_food <= 0:
+                raise ValueError
+            food_energy = initial_life
             root.destroy()
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingrese un número entero válido.")
