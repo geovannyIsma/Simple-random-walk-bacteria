@@ -25,7 +25,7 @@ FOOD_COLOR = (255, 0, 255)
 FOOD_RADIUS = 5
 BACTERIA_RADIUS = 6
 COLLISION_DISTANCE = FOOD_RADIUS + BACTERIA_RADIUS
-FPS = 1
+MOVE_INTERVAL = 800
 
 # Inicialización de Pygame
 pygame.init()
@@ -123,6 +123,7 @@ def main():
     debug = True
 
     food_positions = generate_food(num_food)
+    last_move_time = pygame.time.get_ticks()
 
     for cycle in range(num_cycles):
         bacteria_position = generate_bacteria_start()
@@ -145,58 +146,67 @@ def main():
                     color = TRACE_OVERLAP_COLOR if count > 1 else TRACE_COLOR
                     pygame.draw.circle(screen, color, point, 3)
 
-            x, y = bacteria_position
-            move = None
+            current_time = pygame.time.get_ticks()
+            if current_time - last_move_time >= MOVE_INTERVAL:
+                last_move_time = current_time
 
-            if x == MARGIN or x == WIDTH + MARGIN or y == MARGIN or y == HEIGHT + MARGIN:
-                if (x, y) in [(MARGIN, MARGIN), (WIDTH + MARGIN, MARGIN), (MARGIN, HEIGHT + MARGIN), (WIDTH + MARGIN, HEIGHT + MARGIN)]:
-                    while move not in ["left", "up", "right", "down"]:
-                        move = walk()
-                        if (x == MARGIN and y == MARGIN and move in ["left", "up"]) or \
-                           (x == WIDTH + MARGIN and y == MARGIN and move in ["right", "up"]) or \
-                           (x == MARGIN and y == HEIGHT + MARGIN and move in ["left", "down"]) or \
-                           (x == WIDTH + MARGIN and y == HEIGHT + MARGIN and move in ["right", "down"]):
-                            break
+                x, y = bacteria_position
+                move = None
+
+                if x == MARGIN or x == WIDTH + MARGIN or y == MARGIN or y == HEIGHT + MARGIN:
+                    if (x, y) in [(MARGIN, MARGIN), (WIDTH + MARGIN, MARGIN), (MARGIN, HEIGHT + MARGIN), (WIDTH + MARGIN, HEIGHT + MARGIN)]:
+                        while move not in ["left", "up", "right", "down"]:
+                            move = walk()
+                            if (x == MARGIN and y == MARGIN and move in ["left", "up"]) or \
+                               (x == WIDTH + MARGIN and y == MARGIN and move in ["right", "up"]) or \
+                               (x == MARGIN and y == HEIGHT + MARGIN and move in ["left", "down"]) or \
+                               (x == WIDTH + MARGIN and y == HEIGHT + MARGIN and move in ["right", "down"]):
+                                break
+                    else:
+                        while move not in ["left", "right", "up", "down"]:
+                            move = walk()
+                            if (x == MARGIN and move == "left") or \
+                               (x == WIDTH + MARGIN and move == "right") or \
+                               (y == MARGIN and move == "up") or \
+                               (y == HEIGHT + MARGIN and move == "down"):
+                                break
                 else:
-                    while move not in ["left", "right", "up", "down"]:
-                        move = walk()
-                        if (x == MARGIN and move == "left") or \
-                           (x == WIDTH + MARGIN and move == "right") or \
-                           (y == MARGIN and move == "up") or \
-                           (y == HEIGHT + MARGIN and move == "down"):
-                            break
-            else:
-                move = walk()
+                    move = walk()
 
-            if move == "up":
-                y -= GRID_SIZE
-            elif move == "down":
-                y += GRID_SIZE
-            elif move == "right":
-                x += GRID_SIZE
-            else:
-                x -= GRID_SIZE
-
-            new_position = (x, y)
-
-            if is_inside_screen(*new_position):
-                bacteria_position = new_position
-                moved_steps += 1
-
-                if bacteria_position in trace:
-                    trace[bacteria_position] += 1
+                if move == "up":
+                    y -= GRID_SIZE
+                elif move == "down":
+                    y += GRID_SIZE
+                elif move == "right":
+                    x += GRID_SIZE
                 else:
-                    trace[bacteria_position] = 1
+                    x -= GRID_SIZE
 
-            for food_position in food_positions:
-                if is_collision(bacteria_position, food_position):
-                    moved_steps -= food_energy
-                    food_positions.remove(food_position)
-                    break
+                new_position = (x, y)
+
+                if is_inside_screen(*new_position):
+                    bacteria_position = new_position
+                    moved_steps += 1
+                    
+                    if debug:
+                        print(f"Bacteria position: {bacteria_position}")  # Print the position
+
+                    if bacteria_position in trace:
+                        trace[bacteria_position] += 1
+                    else:
+                        trace[bacteria_position] = 1
+
+                for food_position in food_positions:
+                    if is_collision(bacteria_position, food_position):
+                        moved_steps -= food_energy
+                        food_positions.remove(food_position)
+                        break
 
             pygame.draw.circle(screen, BACTERIA_COLOR, bacteria_position, BACTERIA_RADIUS)
             pygame.display.flip()
-            clock.tick(FPS)
+            clock.tick()
+
+        pygame.time.delay(500)  # Delay after the last movement to make it visible
 
     pygame.quit()
 
