@@ -5,9 +5,16 @@ import tkinter as tk
 from tkinter import messagebox
 
 # Configuración inicial
-WIDTH, HEIGHT = 1200, 800
+WINDOW_WIDTH, WINDOW_HEIGHT = 1080, 720
+MARGIN = 50
 GRID_SIZE = 30
-HEIGHT = (HEIGHT // GRID_SIZE) * GRID_SIZE
+
+WIDTH = (WINDOW_WIDTH - 2 * MARGIN) // GRID_SIZE * GRID_SIZE
+HEIGHT = (WINDOW_HEIGHT - 2 * MARGIN) // GRID_SIZE * GRID_SIZE
+
+# Ajustar márgenes dinámicamente para centrar la cuadrícula
+HORIZONTAL_MARGIN = (WINDOW_WIDTH - WIDTH) // 2
+VERTICAL_MARGIN = (WINDOW_HEIGHT - HEIGHT) // 2
 
 BACKGROUND_COLOR = (0, 0, 0)
 BACTERIA_COLOR = (0, 255, 0)
@@ -22,34 +29,34 @@ FPS = 1
 
 # Inicialización de Pygame
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Simulación de Bacteria")
 clock = pygame.time.Clock()
 
 def generate_bacteria_start():
     side = random.choice(["top", "bottom", "left", "right"])
-    vertical = random.randint(0, (WIDTH) // GRID_SIZE)
-    horizontal = random.randint(0, (HEIGHT) // GRID_SIZE)
+    vertical = random.randint(0, WIDTH // GRID_SIZE - 1)
+    horizontal = random.randint(0, HEIGHT // GRID_SIZE - 1)
 
     if side == "top":
-        return vertical * GRID_SIZE, 0
+        return vertical * GRID_SIZE + HORIZONTAL_MARGIN, VERTICAL_MARGIN
     elif side == "bottom":
-        return vertical * GRID_SIZE, HEIGHT
+        return vertical * GRID_SIZE + HORIZONTAL_MARGIN, HEIGHT + VERTICAL_MARGIN
     elif side == "left":
-        return 0, horizontal * GRID_SIZE
+        return HORIZONTAL_MARGIN, horizontal * GRID_SIZE + VERTICAL_MARGIN
     else:
-        return WIDTH, horizontal * GRID_SIZE
+        return WIDTH + HORIZONTAL_MARGIN, horizontal * GRID_SIZE + VERTICAL_MARGIN
 
 def generate_food(num_food):
     food_positions = []
     while len(food_positions) < num_food:
-        x = random.randint(1, (WIDTH - GRID_SIZE) // GRID_SIZE - 1) * GRID_SIZE
-        y = random.randint(1, (HEIGHT - GRID_SIZE) // GRID_SIZE - 1) * GRID_SIZE
+        x = random.randint(0, WIDTH // GRID_SIZE - 1) * GRID_SIZE + HORIZONTAL_MARGIN
+        y = random.randint(0, HEIGHT // GRID_SIZE - 1) * GRID_SIZE + VERTICAL_MARGIN
         food_positions.append((x, y))
     return food_positions
 
 def is_inside_screen(x, y):
-    return 0 <= x < WIDTH and 0 <= y < HEIGHT
+    return MARGIN <= x < WIDTH + MARGIN and MARGIN <= y < HEIGHT + MARGIN
 
 def is_collision(bacteria_position, food_position):
     bx, by = bacteria_position
@@ -58,10 +65,10 @@ def is_collision(bacteria_position, food_position):
     return distance <= COLLISION_DISTANCE
 
 def draw_grid():
-    for x in range(0, WIDTH, GRID_SIZE):
-        pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, HEIGHT))
-    for y in range(0, HEIGHT, GRID_SIZE):
-        pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
+    for x in range(HORIZONTAL_MARGIN, WIDTH + HORIZONTAL_MARGIN + 1, GRID_SIZE):
+        pygame.draw.line(screen, (50, 50, 50), (x, VERTICAL_MARGIN), (x, HEIGHT + VERTICAL_MARGIN))
+    for y in range(VERTICAL_MARGIN, HEIGHT + VERTICAL_MARGIN + 1, GRID_SIZE):
+        pygame.draw.line(screen, (50, 50, 50), (HORIZONTAL_MARGIN, y), (WIDTH + HORIZONTAL_MARGIN, y))
 
 def solicitar_datos():
     def on_submit():
@@ -119,7 +126,7 @@ def main():
 
     for cycle in range(num_cycles):
         bacteria_position = generate_bacteria_start()
-        trace = {bacteria_position: 1}  # Agregar la posición inicial al rastro
+        trace = {bacteria_position: 1}
         moved_steps = 0
 
         while moved_steps < initial_life:
@@ -141,22 +148,22 @@ def main():
             x, y = bacteria_position
             move = None
 
-            if x == 0 or x == WIDTH or y == 0 or y == HEIGHT:
-                if (x, y) in [(0, 0), (WIDTH, 0), (0, HEIGHT), (WIDTH, HEIGHT)]:
+            if x == MARGIN or x == WIDTH + MARGIN or y == MARGIN or y == HEIGHT + MARGIN:
+                if (x, y) in [(MARGIN, MARGIN), (WIDTH + MARGIN, MARGIN), (MARGIN, HEIGHT + MARGIN), (WIDTH + MARGIN, HEIGHT + MARGIN)]:
                     while move not in ["left", "up", "right", "down"]:
                         move = walk()
-                        if (x == 0 and y == 0 and move in ["left", "up"]) or \
-                           (x == WIDTH and y == 0 and move in ["right", "up"]) or \
-                           (x == 0 and y == HEIGHT and move in ["left", "down"]) or \
-                           (x == WIDTH and y == HEIGHT and move in ["right", "down"]):
+                        if (x == MARGIN and y == MARGIN and move in ["left", "up"]) or \
+                           (x == WIDTH + MARGIN and y == MARGIN and move in ["right", "up"]) or \
+                           (x == MARGIN and y == HEIGHT + MARGIN and move in ["left", "down"]) or \
+                           (x == WIDTH + MARGIN and y == HEIGHT + MARGIN and move in ["right", "down"]):
                             break
                 else:
                     while move not in ["left", "right", "up", "down"]:
                         move = walk()
-                        if (x == 0 and move == "left") or \
-                           (x == WIDTH and move == "right") or \
-                           (y == 0 and move == "up") or \
-                           (y == HEIGHT and move == "down"):
+                        if (x == MARGIN and move == "left") or \
+                           (x == WIDTH + MARGIN and move == "right") or \
+                           (y == MARGIN and move == "up") or \
+                           (y == HEIGHT + MARGIN and move == "down"):
                             break
             else:
                 move = walk()
