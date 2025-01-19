@@ -128,28 +128,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         continue
 
                     x, y = posicion_bacteria
-                    movimiento = None
-
-                    if x == MARGEN or x == ANCHO + MARGEN or y == MARGEN or y == ALTO + MARGEN:
-                        if (x, y) in [(MARGEN, MARGEN), (ANCHO + MARGEN, MARGEN), (MARGEN, ALTO + MARGEN),
-                                      (ANCHO + MARGEN, ALTO + MARGEN)]:
-                            while movimiento not in ["izquierda", "arriba", "derecha", "abajo"]:
-                                movimiento = caminar()
-                                if (x == MARGEN and y == MARGEN and movimiento in ["izquierda", "arriba"]) or \
-                                        (x == ANCHO + MARGEN and y == MARGEN and movimiento in ["derecha", "arriba"]) or \
-                                        (x == MARGEN and y == ALTO + MARGEN and movimiento in ["izquierda", "abajo"]) or \
-                                        (x == ANCHO + MARGEN and y == ALTO + MARGEN and movimiento in ["derecha", "abajo"]):
-                                    break
-                        else:
-                            while movimiento not in ["izquierda", "derecha", "arriba", "abajo"]:
-                                movimiento = caminar()
-                                if (x == MARGEN and movimiento == "izquierda") or \
-                                        (x == ANCHO + MARGEN and movimiento == "derecha") or \
-                                        (y == MARGEN and movimiento == "arriba") or \
-                                        (y == ALTO + MARGEN and movimiento == "abajo"):
-                                    break
-                    else:
-                        movimiento = caminar()
+                    movimiento = caminar()
 
                     if movimiento == "arriba":
                         y -= TAMANO_CELDA
@@ -208,3 +187,4 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         pygame.time.delay(500)
 
     pygame.quit()
+    
