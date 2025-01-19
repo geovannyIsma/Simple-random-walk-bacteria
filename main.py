@@ -38,7 +38,7 @@ def principal():
         ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
                        COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                        RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                       num_ciclos, vida_inicial, num_comida, num_particulas, ALTO_VENTANA)
+                       num_ciclos, vida_inicial, num_comida, num_particulas, ALTO_VENTANA, debug=False)
 
 if __name__ == "__main__":
     principal()

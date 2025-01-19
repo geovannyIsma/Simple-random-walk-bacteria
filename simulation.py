@@ -85,9 +85,7 @@ def dibujar_bacteria_con_numeros(pantalla, posiciones_bacteria, numeros_bacteria
 def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
                    COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                    RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                   num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA):
-    debug = True
-
+                   num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, debug):
     posiciones_bacteria = [generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL) for _ in
                           range(num_particulas)]
     numeros_bacteria = list(range(1, num_particulas + 1))
@@ -106,6 +104,9 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                 if evento.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                elif evento.type == pygame.KEYDOWN:
+                    if evento.mod & pygame.KMOD_CTRL and evento.key == pygame.K_d:
+                        debug = not debug
 
             pantalla.fill(COLOR_FONDO)
             dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
