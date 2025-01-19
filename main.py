@@ -1,8 +1,10 @@
 import pygame
 import random
 import sys
-import tkinter as tk
-from tkinter import messagebox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtWidgets import QSpinBox, QFormLayout
 
 # Configuración inicial
 WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 800  # Aumentar tamaño de la ventana
@@ -71,50 +73,114 @@ def draw_grid():
         pygame.draw.line(screen, (50, 50, 50), (HORIZONTAL_MARGIN, y), (WIDTH + HORIZONTAL_MARGIN, y))
 
 def solicitar_datos():
-    def on_submit():
-        try:
-            global num_cycles, initial_life, food_energy, num_food, num_particles
-            num_cycles = int(entry_cycles.get())
-            initial_life = int(entry_life.get())
-            num_food = int(entry_food.get())
-            num_particles = int(entry_particles.get())
-            if num_cycles <= 0 or initial_life <= 0 or num_food <= 0 or num_particles <= 0:
-                raise ValueError
-            food_energy = initial_life
-            root.destroy()
-        except ValueError:
-            messagebox.showerror("Error", "Por favor, ingrese un número entero válido.")
-            entry_cycles.delete(0, tk.END)
-            entry_life.delete(0, tk.END)
-            entry_food.delete(0, tk.END)
-            entry_particles.delete(0, tk.END)
+    class InputWindow(QWidget):
+        def __init__(self):
+            super().__init__()
+            self.initUI()
 
-    root = tk.Tk()
-    root.title("Configuración inicial")
-    root.geometry("280x120")
-    root.eval('tk::PlaceWindow . center')
-    root.resizable(False, False)
+        def initUI(self):
+            self.setWindowTitle('Configuración inicial')
+            self.setGeometry(100, 100, 500, 300)
+            self.setFixedSize(500, 300)
+            self.setWindowIcon(QIcon('path/to/icon.png'))  # Add your icon path here
+            self.center()
 
-    tk.Label(root, text="Número de ciclos:").grid(row=0, column=0)
-    entry_cycles = tk.Entry(root)
-    entry_cycles.grid(row=0, column=1)
+            layout = QVBoxLayout()
 
-    tk.Label(root, text="Vida inicial de la bacteria:").grid(row=1, column=0)
-    entry_life = tk.Entry(root)
-    entry_life.grid(row=1, column=1)
+            form_layout = QFormLayout()
+            self.cycles_label = QLabel('Número de ciclos:')
+            self.cycles_input = QSpinBox()
+            self.cycles_input.setRange(1, 10000)
+            self.cycles_input.setKeyboardTracking(False)
+            form_layout.addRow(self.cycles_label, self.cycles_input)
 
-    tk.Label(root, text="Número de comidas:").grid(row=2, column=0)
-    entry_food = tk.Entry(root)
-    entry_food.grid(row=2, column=1)
+            self.life_label = QLabel('Vida inicial de la bacteria:')
+            self.life_input = QSpinBox()
+            self.life_input.setRange(1, 10000)
+            self.life_input.setKeyboardTracking(False)
+            form_layout.addRow(self.life_label, self.life_input)
 
-    tk.Label(root, text="Número de partículas:").grid(row=3, column=0)
-    entry_particles = tk.Entry(root)
-    entry_particles.grid(row=3, column=1)
+            self.food_label = QLabel('Número de comidas:')
+            self.food_input = QSpinBox()
+            self.food_input.setRange(1, 10000)
+            self.food_input.setKeyboardTracking(False)
+            form_layout.addRow(self.food_label, self.food_input)
 
-    submit_button = tk.Button(root, text="Iniciar Simulación", command=on_submit)
-    submit_button.grid(row=4, columnspan=2)
+            self.particles_label = QLabel('Número de partículas:')
+            self.particles_input = QSpinBox()
+            self.particles_input.setRange(1, 10000)
+            self.particles_input.setKeyboardTracking(False)
+            form_layout.addRow(self.particles_label, self.particles_input)
 
-    root.mainloop()
+            layout.addLayout(form_layout)
+
+            self.submit_button = QPushButton('Iniciar Simulación')
+            self.submit_button.setFixedHeight(40)
+            self.submit_button.setFixedWidth(200)
+            self.submit_button.clicked.connect(self.on_submit)
+            layout.addWidget(self.submit_button, alignment=Qt.AlignCenter)
+
+            self.setLayout(layout)
+            self.apply_styles()
+
+        def center(self):
+            qr = self.frameGeometry()
+            cp = QApplication.desktop().availableGeometry().center()
+            qr.moveCenter(cp)
+            self.move(qr.topLeft())
+
+        def apply_styles(self):
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #1e1e2e;
+                    color: #c0c0c0;
+                    font-family: 'Roboto', sans-serif;
+                    font-size: 16px;
+                }
+                QLabel {
+                    margin-bottom: 10px;
+                }
+                QSpinBox {
+                    background-color: #2e2e3e;
+                    border: 1px solid #4e4e6e;
+                    padding: 5px;
+                    margin-bottom: 15px;
+                    color: #c0c0c0;
+                }
+                QPushButton {
+                    background-color: #3e3e5e;
+                    border: none;
+                    padding: 10px;
+                    color: #c0c0c0;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #5e5e7e;
+                }
+            """)
+
+        def on_submit(self):
+            try:
+                global num_cycles, initial_life, food_energy, num_food, num_particles
+                num_cycles = self.cycles_input.value()
+                initial_life = self.life_input.value()
+                num_food = self.food_input.value()
+                num_particles = self.particles_input.value()
+                if num_cycles <= 0 or initial_life <= 0 or num_food <= 0 or num_particles <= 0:
+                    raise ValueError
+                food_energy = initial_life
+                self.close()
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Por favor, ingrese un número entero válido.")
+                self.cycles_input.clear()
+                self.life_input.clear()
+                self.food_input.clear()
+                self.particles_input.clear()
+
+    app = QApplication(sys.argv)
+    window = InputWindow()
+    window.show()
+    app.exec_()
 
 def walk():
     orientacion = random.choice([1, -1])
