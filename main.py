@@ -5,8 +5,8 @@ import tkinter as tk
 from tkinter import messagebox
 
 # Configuración inicial
-WINDOW_WIDTH, WINDOW_HEIGHT = 1080, 720
-MARGIN = 50
+WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 800  # Aumentar tamaño de la ventana
+MARGIN = 100  # Aumentar tamaño de los márgenes
 GRID_SIZE = 30
 
 WIDTH = (WINDOW_WIDTH - 2 * MARGIN) // GRID_SIZE * GRID_SIZE
@@ -73,11 +73,12 @@ def draw_grid():
 def solicitar_datos():
     def on_submit():
         try:
-            global num_cycles, initial_life, food_energy, num_food
+            global num_cycles, initial_life, food_energy, num_food, num_particles
             num_cycles = int(entry_cycles.get())
             initial_life = int(entry_life.get())
             num_food = int(entry_food.get())
-            if num_cycles <= 0 or initial_life <= 0 or num_food <= 0:
+            num_particles = int(entry_particles.get())
+            if num_cycles <= 0 or initial_life <= 0 or num_food <= 0 or num_particles <= 0:
                 raise ValueError
             food_energy = initial_life
             root.destroy()
@@ -86,10 +87,11 @@ def solicitar_datos():
             entry_cycles.delete(0, tk.END)
             entry_life.delete(0, tk.END)
             entry_food.delete(0, tk.END)
+            entry_particles.delete(0, tk.END)
 
     root = tk.Tk()
     root.title("Configuración inicial")
-    root.geometry("280x90")
+    root.geometry("280x120")
     root.eval('tk::PlaceWindow . center')
     root.resizable(False, False)
 
@@ -105,8 +107,12 @@ def solicitar_datos():
     entry_food = tk.Entry(root)
     entry_food.grid(row=2, column=1)
 
+    tk.Label(root, text="Número de partículas:").grid(row=3, column=0)
+    entry_particles = tk.Entry(root)
+    entry_particles.grid(row=3, column=1)
+
     submit_button = tk.Button(root, text="Iniciar Simulación", command=on_submit)
-    submit_button.grid(row=3, columnspan=2)
+    submit_button.grid(row=4, columnspan=2)
 
     root.mainloop()
 
@@ -118,19 +124,49 @@ def walk():
     else:
         return "right" if direccion == 1 else "left"
 
+def draw_debug_info(cycle, bacteria_positions, moved_steps, ate_food, traces, food_positions):
+    font = pygame.font.SysFont("Courier New", 16)  # Cambiar la fuente y tamaño
+    debug_info = [
+        f"Ciclo: {cycle + 1}/{num_cycles}",
+        f"Partículas: {len(bacteria_positions)}",
+        f"Comida restante: {len(food_positions)}"
+    ]
+    for i, (pos, steps, ate) in enumerate(zip(bacteria_positions, moved_steps, ate_food)):
+        trace_count = traces[i].get(pos, 0)
+        debug_info.append(f"Bacteria {i + 1}: Vida {steps}/{initial_life}, {'Comió' if ate else 'No comió'}, Trazas: {trace_count}")
+
+    for i, line in enumerate(debug_info):
+        text = font.render(line, True, (255, 255, 255))
+        screen.blit(text, (10, 10 + i * 20))
+
+    # Mostrar parámetros ingresados en la esquina inferior
+    param_info = [
+        f"Parámetros:",
+        f"Número de ciclos: {num_cycles}",
+        f"Vida inicial de la bacteria: {initial_life}",
+        f"Número de comidas: {num_food}",
+        f"Número de partículas: {num_particles}"
+    ]
+    for i, line in enumerate(param_info):
+        text = font.render(line, True, (255, 255, 255))
+        screen.blit(text, (10, WINDOW_HEIGHT - (len(param_info) - i) * 20 - 10))  # Dibujar en la esquina inferior
+
 def main():
     solicitar_datos()
     debug = True
 
-    food_positions = generate_food(num_food)
-    last_move_time = pygame.time.get_ticks()
+    bacteria_positions = [generate_bacteria_start() for _ in range(num_particles)]
+    traces = [{pos: 1} for pos in bacteria_positions]
+    survived_bacteria = [True] * num_particles  # Track survival status
 
     for cycle in range(num_cycles):
-        bacteria_position = generate_bacteria_start()
-        trace = {bacteria_position: 1}
-        moved_steps = 0
+        # Reset food positions and moved steps for each cycle
+        food_positions = generate_food(num_food)
+        last_move_time = pygame.time.get_ticks()
+        moved_steps = [0] * len(bacteria_positions)
+        ate_food = [False] * len(bacteria_positions)  # Track if bacteria ate food
 
-        while moved_steps < initial_life:
+        while any(steps < initial_life for steps in moved_steps):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -142,69 +178,96 @@ def main():
                 pygame.draw.circle(screen, FOOD_COLOR, food_position, FOOD_RADIUS)
 
             if debug:
-                for point, count in trace.items():
-                    color = TRACE_OVERLAP_COLOR if count > 1 else TRACE_COLOR
-                    pygame.draw.circle(screen, color, point, 3)
+                for trace in traces:
+                    for point, count in trace.items():
+                        color = TRACE_OVERLAP_COLOR if count > 1 else TRACE_COLOR
+                        pygame.draw.circle(screen, color, point, 3)
 
             current_time = pygame.time.get_ticks()
             if current_time - last_move_time >= MOVE_INTERVAL:
                 last_move_time = current_time
 
-                x, y = bacteria_position
-                move = None
+                for i, bacteria_position in enumerate(bacteria_positions):
+                    if moved_steps[i] >= initial_life or not survived_bacteria[i]:
+                        continue
 
-                if x == MARGIN or x == WIDTH + MARGIN or y == MARGIN or y == HEIGHT + MARGIN:
-                    if (x, y) in [(MARGIN, MARGIN), (WIDTH + MARGIN, MARGIN), (MARGIN, HEIGHT + MARGIN), (WIDTH + MARGIN, HEIGHT + MARGIN)]:
-                        while move not in ["left", "up", "right", "down"]:
-                            move = walk()
-                            if (x == MARGIN and y == MARGIN and move in ["left", "up"]) or \
-                               (x == WIDTH + MARGIN and y == MARGIN and move in ["right", "up"]) or \
-                               (x == MARGIN and y == HEIGHT + MARGIN and move in ["left", "down"]) or \
-                               (x == WIDTH + MARGIN and y == HEIGHT + MARGIN and move in ["right", "down"]):
-                                break
+                    x, y = bacteria_position
+                    move = None
+
+                    if x == MARGIN or x == WIDTH + MARGIN or y == MARGIN or y == HEIGHT + MARGIN:
+                        if (x, y) in [(MARGIN, MARGIN), (WIDTH + MARGIN, MARGIN), (MARGIN, HEIGHT + MARGIN), (WIDTH + MARGIN, HEIGHT + MARGIN)]:
+                            while move not in ["left", "up", "right", "down"]:
+                                move = walk()
+                                if (x == MARGIN and y == MARGIN and move in ["left", "up"]) or \
+                                   (x == WIDTH + MARGIN and y == MARGIN and move in ["right", "up"]) or \
+                                   (x == MARGIN and y == HEIGHT + MARGIN and move in ["left", "down"]) or \
+                                   (x == WIDTH + MARGIN and y == HEIGHT + MARGIN and move in ["right", "down"]):
+                                    break
+                        else:
+                            while move not in ["left", "right", "up", "down"]:
+                                move = walk()
+                                if (x == MARGIN and move == "left") or \
+                                   (x == WIDTH + MARGIN and move == "right") or \
+                                   (y == MARGIN and move == "up") or \
+                                   (y == HEIGHT + MARGIN and move == "down"):
+                                    break
                     else:
-                        while move not in ["left", "right", "up", "down"]:
-                            move = walk()
-                            if (x == MARGIN and move == "left") or \
-                               (x == WIDTH + MARGIN and move == "right") or \
-                               (y == MARGIN and move == "up") or \
-                               (y == HEIGHT + MARGIN and move == "down"):
-                                break
-                else:
-                    move = walk()
+                        move = walk()
 
-                if move == "up":
-                    y -= GRID_SIZE
-                elif move == "down":
-                    y += GRID_SIZE
-                elif move == "right":
-                    x += GRID_SIZE
-                else:
-                    x -= GRID_SIZE
-
-                new_position = (x, y)
-
-                if is_inside_screen(*new_position):
-                    bacteria_position = new_position
-                    moved_steps += 1
-                    
-                    if debug:
-                        print(f"Bacteria position: {bacteria_position}")  # Print the position
-
-                    if bacteria_position in trace:
-                        trace[bacteria_position] += 1
+                    if move == "up":
+                        y -= GRID_SIZE
+                    elif move == "down":
+                        y += GRID_SIZE
+                    elif move == "right":
+                        x += GRID_SIZE
                     else:
-                        trace[bacteria_position] = 1
+                        x -= GRID_SIZE
 
-                for food_position in food_positions:
-                    if is_collision(bacteria_position, food_position):
-                        moved_steps -= food_energy
-                        food_positions.remove(food_position)
-                        break
+                    new_position = (x, y)
 
-            pygame.draw.circle(screen, BACTERIA_COLOR, bacteria_position, BACTERIA_RADIUS)
+                    if is_inside_screen(*new_position):
+                        bacteria_positions[i] = new_position
+                        moved_steps[i] += 1
+                        
+                        if debug:
+                            print(f"Bacteria {i} position: {bacteria_positions[i]}")  # Print the position
+
+                        if new_position in traces[i]:
+                            traces[i][new_position] += 1
+                        else:
+                            traces[i][new_position] = 1
+
+                    for food_position in food_positions:
+                        if is_collision(bacteria_positions[i], food_position):
+                            ate_food[i] = True  # Mark that this bacteria ate food
+                            food_positions.remove(food_position)
+                            break
+
+            # Dibujar las bacterias y actualizar la pantalla después de cada movimiento
+            screen.fill(BACKGROUND_COLOR)
+            draw_grid()
+            for food_position in food_positions:
+                pygame.draw.circle(screen, FOOD_COLOR, food_position, FOOD_RADIUS)
+            for bacteria_position in bacteria_positions:
+                pygame.draw.circle(screen, BACTERIA_COLOR, bacteria_position, BACTERIA_RADIUS)
+            if debug:
+                for trace in traces:
+                    for point, count in trace.items():
+                        color = TRACE_OVERLAP_COLOR if count > 1 else TRACE_COLOR
+                        pygame.draw.circle(screen, color, point, 3)
+                draw_debug_info(cycle, bacteria_positions, moved_steps, ate_food, traces, food_positions)  # Draw debug info
             pygame.display.flip()
-            clock.tick()
+            clock.tick(60)  # Ajustar la velocidad de la animación
+
+        # Check survival status
+        for i in range(len(bacteria_positions)):
+            if not ate_food[i]:
+                survived_bacteria[i] = False
+
+        # Filter out dead bacteria for the next cycle
+        bacteria_positions = [generate_bacteria_start() for i, pos in enumerate(bacteria_positions) if survived_bacteria[i]]
+        traces = [{pos: 1} for pos in bacteria_positions]
+        survived_bacteria = [True] * len(bacteria_positions)
 
         pygame.time.delay(500)  # Delay after the last movement to make it visible
 
