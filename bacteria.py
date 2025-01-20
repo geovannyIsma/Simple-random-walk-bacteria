@@ -11,24 +11,28 @@ class Bacteria:
 
     def mover(self, TAMANO_CELDA, MARGEN, ANCHO, ALTO):
         x, y = self.posicion
-        movimiento = random.choice(["arriba", "abajo", "izquierda", "derecha"])
-        if movimiento == "arriba":
-            y -= TAMANO_CELDA
-        elif movimiento == "abajo":
-            y += TAMANO_CELDA
-        elif movimiento == "derecha":
-            x += TAMANO_CELDA
-        else:
-            x -= TAMANO_CELDA
-
-        nueva_posicion = (x, y)
-        if MARGEN <= x < ANCHO + MARGEN and MARGEN <= y < ALTO + MARGEN:
-            self.posicion = nueva_posicion
-            self.vida -= 1
-            if nueva_posicion in self.trazas:
-                self.trazas[nueva_posicion] += 1
+        movimientos = ["arriba", "abajo", "izquierda", "derecha"]
+        while movimientos:
+            movimiento = random.choice(movimientos)
+            if movimiento == "arriba":
+                nueva_posicion = (x, y - TAMANO_CELDA)
+            elif movimiento == "abajo":
+                nueva_posicion = (x, y + TAMANO_CELDA)
+            elif movimiento == "derecha":
+                nueva_posicion = (x + TAMANO_CELDA, y)
             else:
-                self.trazas[nueva_posicion] = 1
+                nueva_posicion = (x - TAMANO_CELDA, y)
+
+            if MARGEN <= nueva_posicion[0] < ANCHO + MARGEN and MARGEN <= nueva_posicion[1] < ALTO + MARGEN:
+                self.posicion = nueva_posicion
+                self.vida -= 1
+                if nueva_posicion in self.trazas:
+                    self.trazas[nueva_posicion] += 1
+                else:
+                    self.trazas[nueva_posicion] = 1
+                break
+            else:
+                movimientos.remove(movimiento)
 
     def verificar_colision(self, posicion_comida, DISTANCIA_COLISION):
         bx, by = self.posicion
