@@ -93,11 +93,17 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
     bacterias_sobrevivientes = [True] * num_particulas
 
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
+    
+    ciclos_restantes = num_ciclos
 
     for ciclo in range(num_ciclos):
         ultimo_tiempo_movimiento = pygame.time.get_ticks()
         pasos_movidos = [0] * len(posiciones_bacteria)
         comio_comida = [False] * len(posiciones_bacteria)
+
+        if len(posiciones_bacteria) == 0:
+            ciclos_restantes = num_ciclos - ciclo
+            break
 
         while any(pasos < vida_inicial for pasos in pasos_movidos):
             for evento in pygame.event.get():
@@ -185,6 +191,20 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         bacterias_sobrevivientes = [True] * len(posiciones_bacteria)
 
         pygame.time.delay(500)
+
+    if len(posiciones_bacteria) == 0:
+        fuente = pygame.font.SysFont("Courier New", 36)
+        while True:
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+            pantalla.fill((0, 0, 0))
+            mensaje = f"No hay bacterias vivas. {ciclos_restantes} ciclos no se ejecutaron."
+            texto = fuente.render(mensaje, True, (255, 255, 255))
+            pantalla.blit(texto, (50, ALTURA_VENTANA // 2))
+            pygame.display.flip()
+            reloj.tick(60)
 
     pygame.quit()
     
