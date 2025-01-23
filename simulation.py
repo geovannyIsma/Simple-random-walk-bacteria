@@ -92,6 +92,11 @@ def dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACT
         pantalla.blit(texto, (bacteria.posicion[0] + RADIO_BACTERIA, bacteria.posicion[1] - RADIO_BACTERIA))
 
 
+def resolver_competencia_comida(bacterias_competidoras):
+    """Selecciona aleatoriamente una bacteria ganadora entre las competidoras"""
+    return random.choice(bacterias_competidoras)
+
+
 def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
@@ -133,19 +138,50 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
             if tiempo_actual - ultimo_tiempo_movimiento >= INTERVALO_MOVIMIENTO:
                 ultimo_tiempo_movimiento = tiempo_actual
 
+                # Diccionario para rastrear qué bacterias intentan comer cada comida
+                competencia_comida = {}
+
+                # Primera pasada: registrar todas las bacterias que intentan comer
                 for bacteria in bacterias:
                     if bacteria.vida <= 0:
                         continue
 
-                    bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO)
-
+                    # El método mover ahora devuelve las comidas encontradas en el camino
+                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida)
+                    
                     if debug:
                         print(f"Bacteria {bacteria.id} posición: {bacteria.posicion}")
 
+                    # Registrar las comidas encontradas en el camino
+                    for comida in comidas_encontradas:
+                        if comida not in competencia_comida:
+                            competencia_comida[comida] = []
+                        competencia_comida[comida].append(bacteria)
+
+                    # Verificar colisiones en la posición final
                     for posicion_comida in posiciones_comida:
                         if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION):
-                            posiciones_comida.remove(posicion_comida)
-                            break
+                            if posicion_comida not in competencia_comida:
+                                competencia_comida[posicion_comida] = []
+                            competencia_comida[posicion_comida].append(bacteria)
+
+                # Segunda pasada: resolver competencias y eliminar comida
+                comidas_para_eliminar = []
+                for posicion_comida, bacterias_competidoras in competencia_comida.items():
+                    if bacterias_competidoras:
+                        # Seleccionar una bacteria ganadora
+                        bacteria_ganadora = resolver_competencia_comida(bacterias_competidoras)
+                        
+                        # Marcar solo la bacteria ganadora como alimentada
+                        for bacteria in bacterias_competidoras:
+                            bacteria.comio_comida = (bacteria == bacteria_ganadora)
+                        
+                        comidas_para_eliminar.append(posicion_comida)
+
+                # Eliminar las comidas consumidas
+                for comida in comidas_para_eliminar:
+                    if comida in posiciones_comida:
+                        posiciones_comida.remove(comida)
 
             pantalla.fill(COLOR_FONDO)
             dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
@@ -162,9 +198,21 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
             pygame.display.flip()
             reloj.tick(60)
 
-        bacterias = [
-            Bacteria(i + 1, generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
-                     vida_inicial) for i, bacteria in enumerate(bacterias) if bacteria.comio_comida]
+        # Al final de cada ciclo, antes de crear nuevas bacterias
+        bacterias_sobrevivientes = []
+        for bacteria in bacterias:
+            if bacteria.comio_comida:
+                bacteria.actualizar_velocidad()  # Actualizar velocidad para el siguiente ciclo
+                bacterias_sobrevivientes.append(bacteria)
+
+        # Crear nuevas bacterias manteniendo las propiedades de las sobrevivientes
+        bacterias = []
+        for i, bacteria_anterior in enumerate(bacterias_sobrevivientes):
+            nueva_bacteria = Bacteria(i + 1, 
+                generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
+                vida_inicial)
+            nueva_bacteria.velocidad = bacteria_anterior.velocidad  # Mantener la velocidad acumulada
+            bacterias.append(nueva_bacteria)
 
         pygame.time.delay(500)
 
