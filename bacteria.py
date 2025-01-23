@@ -12,6 +12,8 @@ class Bacteria:
         self.velocidad = 1  # Multiplicador de velocidad
         self.intentos_fallidos = {}  # Diccionario para rastrear intentos fallidos por comida
         self.max_intentos = 1  # Máximo número de intentos antes de ignorar una comida
+        self.comidas_alcanzables = set()  # Nuevo conjunto para almacenar comidas alcanzables
+        self.comidas_imposibles = set()   # Nuevo conjunto para almacenar comidas imposibles
 
     def es_comida_alcanzable(self, posicion_comida, TAMANO_CELDA):
         """Verifica si la comida es alcanzable dado el tamaño del movimiento de la bacteria"""
@@ -32,6 +34,28 @@ class Bacteria:
         tolerancia = TAMANO_CELDA / 2
         return abs(distancia % distancia_minima) < tolerancia
 
+    def calcular_comidas_alcanzables(self, posiciones_comida, TAMANO_CELDA):
+        """Precalcula qué comidas son alcanzables basándose en la posición actual"""
+        self.comidas_alcanzables.clear()
+        self.comidas_imposibles.clear()
+        
+        x, y = self.posicion
+        for comida in posiciones_comida:
+            fx, fy = comida
+            dx = abs(x - fx)
+            dy = abs(y - fy)
+            
+            # Una comida es alcanzable si:
+            # 1. La distancia en X e Y son múltiplos del tamaño de celda
+            # 2. O si está a una distancia que permite movimiento diagonal
+            es_multiplo_x = dx % (TAMANO_CELDA * self.velocidad) < TAMANO_CELDA/2
+            es_multiplo_y = dy % (TAMANO_CELDA * self.velocidad) < TAMANO_CELDA/2
+            
+            if es_multiplo_x or es_multiplo_y:
+                self.comidas_alcanzables.add(comida)
+            else:
+                self.comidas_imposibles.add(comida)
+
     def detectar_comida_cercana(self, posiciones_comida, rango_deteccion):
         comida_cercana = []
         x, y = self.posicion
@@ -42,6 +66,26 @@ class Bacteria:
             if distancia <= rango_deteccion and self.es_comida_alcanzable(pos_comida, rango_deteccion/7):
                 comida_cercana.append((pos_comida, distancia))
         return min(comida_cercana, key=lambda x: x[1])[0] if comida_cercana else None
+
+    def detectar_comida_cercana(self, posiciones_comida, rango_deteccion):
+        """Detecta la comida alcanzable más cercana dentro del rango"""
+        comida_mas_cercana = None
+        distancia_minima = float('inf')
+        x, y = self.posicion
+        
+        # Filtrar solo las comidas que están en el conjunto de alcanzables
+        for comida in self.comidas_alcanzables:
+            if comida not in posiciones_comida:
+                continue
+                
+            fx, fy = comida
+            distancia = math.sqrt((x - fx) ** 2 + (y - fy) ** 2)
+            
+            if distancia <= rango_deteccion and distancia < distancia_minima:
+                distancia_minima = distancia
+                comida_mas_cercana = comida
+        
+        return comida_mas_cercana
 
     def verificar_comida_en_trayectoria(self, inicio, fin, posiciones_comida, DISTANCIA_COLISION):
         x1, y1 = inicio
@@ -101,6 +145,32 @@ class Bacteria:
             movimientos = ["arriba", "abajo", "izquierda", "derecha"]
             random.shuffle(movimientos)
 
+        if posiciones_comida:
+            # Actualizar comidas alcanzables al inicio del movimiento
+            self.calcular_comidas_alcanzables(posiciones_comida, TAMANO_CELDA)
+            comida_objetivo = self.detectar_comida_cercana(posiciones_comida, TAMANO_CELDA * 7)
+            
+            if comida_objetivo:
+                # Calcular el movimiento óptimo hacia la comida
+                x, y = self.posicion
+                fx, fy = comida_objetivo
+                dx = fx - x
+                dy = fy - y
+                
+                # Priorizar el movimiento en la dirección con mayor diferencia
+                if abs(dx) > abs(dy):
+                    movimientos = ["derecha" if dx > 0 else "izquierda",
+                                 "arriba" if dy < 0 else "abajo"]
+                else:
+                    movimientos = ["arriba" if dy < 0 else "abajo",
+                                 "derecha" if dx > 0 else "izquierda"]
+            else:
+                movimientos = ["arriba", "abajo", "izquierda", "derecha"]
+                random.shuffle(movimientos)
+        else:
+            movimientos = ["arriba", "abajo", "izquierda", "derecha"]
+            random.shuffle(movimientos)
+
         # Intentar mover la bacteria según su velocidad
         distancia_movimiento = TAMANO_CELDA * self.velocidad
         while movimientos:
@@ -151,6 +221,7 @@ class Bacteria:
             return True
         return False
 
+    
     def actualizar_velocidad(self):
         if self.comidas_este_ciclo >= 2:
             self.velocidad += 1
