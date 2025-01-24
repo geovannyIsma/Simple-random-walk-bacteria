@@ -120,6 +120,13 @@ class Bacteria:
         return False
 
     def actualizar_velocidad(self):
+        ##si come mas de 2 veces gana la habilidad de velocidad es decir se mueve mas espacio por ejemplo si con velocidad x1
+        # se mueve n pixeles con velocidad x2 se moverá 2*n pixeles asi sucesivamente ya que es acumulativo/ multiplicativo pero 
+        # solo ganas velocidad en ese ciclo es decir para obtener el siguiente aumento debe comer 2 veces en el siguiente ciclo y 
+        # este se aplica en el siguiente ciclo, en cada ciclo ganas máximo una velocidad y se aplica en el siguiente ciclo)e
+        # se aumento se guarda se decir si ya ganaste una velocidad x2 la sigues conservando en otros ciclos, al menos que vuelvas 
+        # a comer 2 veces o mas vuelve a aumentar la velocidad  y también si al menos comiste una vez para sobrevivir, 
+        
         if self.comidas_este_ciclo >= 2:
             self.velocidad += 1
-        self.comidas_este_ciclo = 0
+            self.comidas_este_ciclo = 0  
