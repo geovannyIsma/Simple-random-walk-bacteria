@@ -11,6 +11,7 @@ class Bacteria:
         self.comidas_este_ciclo = 0
         self.velocidad = 1
         self.velocidad_siguiente_ciclo = 1  # Nueva variable para controlar el aumento
+        self.comidas_registradas = set()  # Nuevo: para evitar contar la misma comida múltiples veces
 
     def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
         """Detecta comida en líneas horizontales y verticales"""
@@ -116,7 +117,10 @@ class Bacteria:
         fx, fy = posicion_comida
         distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
         if distancia <= DISTANCIA_COLISION:
-            self.comidas_este_ciclo += 1
+            # Solo incrementar el contador si esta comida no ha sido registrada antes
+            if posicion_comida not in self.comidas_registradas:
+                self.comidas_este_ciclo += 1
+                self.comidas_registradas.add(posicion_comida)
             return True
         return False
 
@@ -126,7 +130,10 @@ class Bacteria:
             self.velocidad_siguiente_ciclo = self.velocidad + 1
             print(f"  - Ganó velocidad: {velocidad_anterior} -> {self.velocidad_siguiente_ciclo}")
         else:
-            self.velocidad_siguiente_ciclo = self.velocidad  # Asegurarse de mantener la velocidad si no se incrementa
+            self.velocidad_siguiente_ciclo = self.velocidad
             print(f"  - Mantiene velocidad: {velocidad_anterior}")
-        self.velocidad = self.velocidad_siguiente_ciclo
+        
+        # Limpiar el registro de comidas para el siguiente ciclo
+        self.comidas_registradas.clear()
         self.comidas_este_ciclo = 0
+        self.velocidad = self.velocidad_siguiente_ciclo

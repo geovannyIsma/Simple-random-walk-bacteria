@@ -179,10 +179,11 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         
                         # Marcar solo la bacteria ganadora como alimentada
                         for bacteria in bacterias_competidoras:
-                            bacteria.comio_comida = (bacteria == bacteria_ganadora)
-                            if bacteria.comio_comida:
+                            if bacteria == bacteria_ganadora:
+                                bacteria.comio_comida = True
+                                bacteria.comidas_este_ciclo += 1
                                 print(f"Bacteria {bacteria.id} comió en posición {posicion_comida}")
-                                print(f"  - Comidas en este ciclo: {bacteria.comidas_este_ciclo + 1}")
+                                print(f"  - Comidas en este ciclo: {bacteria.comidas_este_ciclo}")
                                 print(f"  - Velocidad actual: {bacteria.velocidad}")
                         
                         comidas_para_eliminar.append(posicion_comida)
