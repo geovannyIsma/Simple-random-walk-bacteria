@@ -108,6 +108,11 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
     ciclos_restantes = num_ciclos
 
     for ciclo in range(num_ciclos):
+        print(f"\n=== CICLO {ciclo + 1} ===")
+        # Imprimir velocidades iniciales
+        for bacteria in bacterias:
+            print(f"Bacteria {bacteria.id} inicia ciclo con velocidad: {bacteria.velocidad}")
+
         ultimo_tiempo_movimiento = pygame.time.get_ticks()
 
         if len(bacterias) == 0:
@@ -175,6 +180,10 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         # Marcar solo la bacteria ganadora como alimentada
                         for bacteria in bacterias_competidoras:
                             bacteria.comio_comida = (bacteria == bacteria_ganadora)
+                            if bacteria.comio_comida:
+                                print(f"Bacteria {bacteria.id} comió en posición {posicion_comida}")
+                                print(f"  - Comidas en este ciclo: {bacteria.comidas_este_ciclo + 1}")
+                                print(f"  - Velocidad actual: {bacteria.velocidad}")
                         
                         comidas_para_eliminar.append(posicion_comida)
 
@@ -202,7 +211,12 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         bacterias_sobrevivientes = []
         for bacteria in bacterias:
             if bacteria.comio_comida:
-                bacteria.actualizar_velocidad()  # Actualizar velocidad para el siguiente ciclo
+                velocidad_anterior = bacteria.velocidad
+                bacteria.actualizar_velocidad()
+                print(f"\nBacteria {bacteria.id} al final del ciclo:")
+                print(f"  - Comió {bacteria.comidas_este_ciclo} veces")
+                print(f"  - Velocidad anterior: {velocidad_anterior}")
+                print(f"  - Velocidad siguiente ciclo: {bacteria.velocidad_siguiente_ciclo}")
                 bacterias_sobrevivientes.append(bacteria)
 
         # Crear nuevas bacterias manteniendo las propiedades de las sobrevivientes
@@ -211,7 +225,8 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
             nueva_bacteria = Bacteria(i + 1, 
                 generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
                 vida_inicial)
-            nueva_bacteria.velocidad = bacteria_anterior.velocidad  # Mantener la velocidad acumulada
+            nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo  # Usar la velocidad siguiente
+            nueva_bacteria.velocidad_siguiente_ciclo = bacteria_anterior.velocidad_siguiente_ciclo
             bacterias.append(nueva_bacteria)
 
         pygame.time.delay(500)

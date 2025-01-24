@@ -10,6 +10,7 @@ class Bacteria:
         self.comio_comida = False
         self.comidas_este_ciclo = 0
         self.velocidad = 1
+        self.velocidad_siguiente_ciclo = 1  # Nueva variable para controlar el aumento
 
     def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
         """Detecta comida en líneas horizontales y verticales"""
@@ -120,13 +121,12 @@ class Bacteria:
         return False
 
     def actualizar_velocidad(self):
-        ##si come mas de 2 veces gana la habilidad de velocidad es decir se mueve mas espacio por ejemplo si con velocidad x1
-        # se mueve n pixeles con velocidad x2 se moverá 2*n pixeles asi sucesivamente ya que es acumulativo/ multiplicativo pero 
-        # solo ganas velocidad en ese ciclo es decir para obtener el siguiente aumento debe comer 2 veces en el siguiente ciclo y 
-        # este se aplica en el siguiente ciclo, en cada ciclo ganas máximo una velocidad y se aplica en el siguiente ciclo)e
-        # se aumento se guarda se decir si ya ganaste una velocidad x2 la sigues conservando en otros ciclos, al menos que vuelvas 
-        # a comer 2 veces o mas vuelve a aumentar la velocidad  y también si al menos comiste una vez para sobrevivir, 
-        
+        velocidad_anterior = self.velocidad
         if self.comidas_este_ciclo >= 2:
-            self.velocidad += 1
-            self.comidas_este_ciclo = 0  
+            self.velocidad_siguiente_ciclo = self.velocidad + 1
+            print(f"  - Ganó velocidad: {velocidad_anterior} -> {self.velocidad_siguiente_ciclo}")
+        else:
+            self.velocidad_siguiente_ciclo = self.velocidad  # Asegurarse de mantener la velocidad si no se incrementa
+            print(f"  - Mantiene velocidad: {velocidad_anterior}")
+        self.velocidad = self.velocidad_siguiente_ciclo
+        self.comidas_este_ciclo = 0
