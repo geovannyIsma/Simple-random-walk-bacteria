@@ -51,6 +51,7 @@ class Bacteria:
     def mover(self, TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida=None):
         x, y = self.posicion
         comida_objetivo = None
+        comidas_encontradas = []  # Lista para rastrear las comidas encontradas en este movimiento
         
         if posiciones_comida:
             comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
@@ -100,6 +101,12 @@ class Bacteria:
                 comidas_en_camino = self.verificar_comida_en_trayectoria(
                     self.posicion, nueva_posicion, posiciones_comida, TAMANO_CELDA/2)
                 
+                # Agregar solo las comidas que no han sido registradas antes
+                for comida in comidas_en_camino:
+                    if comida not in self.comidas_registradas:
+                        self.comidas_registradas.add(comida)
+                        comidas_encontradas.append(comida)
+                
                 self.posicion = nueva_posicion
                 self.vida -= 1
                 
@@ -108,7 +115,7 @@ class Bacteria:
                 else:
                     self.trazas[nueva_posicion] = 1
                 
-                return comidas_en_camino
+                return comidas_encontradas
                 
         return []
 
@@ -117,16 +124,19 @@ class Bacteria:
         fx, fy = posicion_comida
         distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
         if distancia <= DISTANCIA_COLISION:
-            # Solo incrementar el contador si esta comida no ha sido registrada antes
+            # Solo incrementar si esta comida no ha sido registrada antes
             if posicion_comida not in self.comidas_registradas:
-                self.comidas_este_ciclo += 1
                 self.comidas_registradas.add(posicion_comida)
-            return True
+                self.comidas_este_ciclo += 1
+                return True
         return False
 
     def actualizar_velocidad(self):
         velocidad_anterior = self.velocidad
-        if self.comidas_este_ciclo >= 2:
+        # Imprimir el conteo real de comidas únicas
+        print(f"  - Comidas únicas en este ciclo: {len(self.comidas_registradas)}")
+        
+        if len(self.comidas_registradas) >= 2:  # Usar el número de comidas únicas
             self.velocidad_siguiente_ciclo = self.velocidad + 1
             print(f"  - Ganó velocidad: {velocidad_anterior} -> {self.velocidad_siguiente_ciclo}")
         else:

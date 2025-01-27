@@ -1,6 +1,4 @@
 import pygame
-import sys
-from PyQt5.QtWidgets import QApplication
 from input_window import solicitar_datos
 from simulation import ejecutar_simulacion
 
