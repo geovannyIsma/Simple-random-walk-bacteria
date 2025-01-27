@@ -63,14 +63,21 @@ def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos
         f"Partículas: {len(bacterias)}",
         f"Comida restante: {len(posiciones_comida)}"
     ]
-    for bacteria in bacterias:
-        cuenta_trazas = bacteria.trazas.get(bacteria.posicion, 0)
-        info_debug.append(
-            f"Bacteria {bacteria.id}: Vida {bacteria.vida}/{vida_inicial}, {'Comió' if bacteria.comio_comida else 'No comió'}, Trazas: {cuenta_trazas}")
-
     for i, linea in enumerate(info_debug):
         texto = fuente.render(linea, True, (255, 255, 255))
         pantalla.blit(texto, (10, 10 + i * 20))
+
+    # Información de bacterias en blanco
+    for i, bacteria in enumerate(bacterias):
+        cuenta_trazas = bacteria.trazas.get(bacteria.posicion, 0)
+        info_bacteria = f"Bacteria {bacteria.id}: Vida {bacteria.vida}/{vida_inicial}, {'Comió' if bacteria.comio_comida else 'No comió'}, Trazas: {cuenta_trazas}"
+        texto = fuente.render(info_bacteria, True, (255, 255, 255))
+        pantalla.blit(texto, (10, 70 + i * 40))
+        
+        # Agregar contador de comidas y velocidad en azul
+        info_stats = f"Comidas en este ciclo: {bacteria.comidas_este_ciclo} | Velocidad actual: {bacteria.velocidad}x"
+        texto_stats = fuente.render(info_stats, True, (0, 191, 255))  # Azul claro
+        pantalla.blit(texto_stats, (30, 90 + i * 40))
 
     info_parametros = [
         f"Parámetros:",
@@ -233,16 +240,32 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         pygame.time.delay(500)
 
     if len(bacterias) == 0:
-        fuente = pygame.font.SysFont("Courier New", 36)
+        fuente_grande = pygame.font.SysFont("Courier New", 36)
+        fuente_pequena = pygame.font.SysFont("Courier New", 24)
         while True:
             for evento in pygame.event.get():
                 if evento.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                elif evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
+
             pantalla.fill((0, 0, 0))
+            
+            # Mensaje principal
             mensaje = f"No hay bacterias vivas. {ciclos_restantes} ciclos no se ejecutaron."
-            texto = fuente.render(mensaje, True, (255, 255, 255))
-            pantalla.blit(texto, (50, ALTURA_VENTANA // 2))
+            texto = fuente_grande.render(mensaje, True, (255, 255, 255))
+            rect_texto = texto.get_rect(center=(1280 // 2, 800 // 2))
+            pantalla.blit(texto, rect_texto)
+            
+            # Mensaje ESC
+            mensaje_esc = "ESC: Salir"
+            texto_esc = fuente_pequena.render(mensaje_esc, True, (255, 255, 255))
+            rect_esc = texto_esc.get_rect(bottomright=(1280 - 20, 800 - 20))
+            pantalla.blit(texto_esc, rect_esc)
+            
             pygame.display.flip()
             reloj.tick(60)
 
