@@ -4,10 +4,29 @@ Este proyecto simula la caminata aleatoria de bacterias en un entorno de cuadrí
 
 ## Características
 
-- Simulación de caminata aleatoria de bacterias.
-- Parámetros configurables como número de ciclos, vida inicial de las bacterias, número de partículas de comida y número de bacterias.
-- Visualización del movimiento de las bacterias, partículas de comida y rastros dejados por las bacterias.
-- Visualización de información de depuración.
+- Simulación de caminata aleatoria de bacterias con comportamiento adaptativo.
+- Sistema de velocidad variable basado en el éxito de alimentación.
+- Detección inteligente de comida en líneas horizontales y verticales.
+- Competencia entre bacterias por recursos alimenticios.
+- Parámetros configurables:
+  - Número de ciclos
+  - Vida inicial de las bacterias
+  - Número de partículas de comida
+  - Número de bacterias
+- Visualización detallada:
+  - Movimiento de bacterias numeradas
+  - Partículas de comida
+  - Rastros dejados por las bacterias
+  - Información de depuración (toggle con Ctrl+D)
+  - Estadísticas en tiempo real de cada bacteria
+
+## Mecánicas Principales
+
+- Las bacterias aumentan su velocidad si consumen 2 o más comidas en un ciclo
+- Sistema de detección de comida en línea recta
+- Resolución de competencia por comida entre múltiples bacterias
+- Seguimiento de trazas y superposición de caminos
+- Sistema de vida y regeneración entre ciclos
 
 ## Requisitos
 
@@ -35,10 +54,26 @@ Este proyecto simula la caminata aleatoria de bacterias en un entorno de cuadrí
     python main.py
     ```
 
-2. Aparecerá una ventana de configuración. Ingresa los parámetros deseados y comienza la simulación.
+2. Configura los parámetros en la ventana de entrada:
+   - Número de ciclos de simulación
+   - Vida inicial de cada bacteria
+   - Cantidad de partículas de comida
+   - Número de bacterias
+
+3. Controles durante la simulación:
+   - Ctrl+D: Activa/desactiva la información de depuración
+   - ESC: Salir (cuando no hay bacterias vivas)
 
 ## Archivos
 
-- `main.py`: Script principal para ejecutar la simulación.
-- `simulation.py`: Contiene la lógica para la simulación de las bacterias.
-- `input_window.py`: Contiene el código de PyQt5 para la ventana de configuración de entrada.
+- `main.py`: Script principal para ejecutar la simulación
+- `simulation.py`: Contiene la lógica principal de la simulación
+- `bacteria.py`: Define la clase Bacteria y su comportamiento
+- `input_window.py`: Interfaz de configuración inicial con PyQt5
+
+## Interfaz
+
+- Ventana principal de simulación con cuadrícula
+- Panel de depuración con información en tiempo real
+- Ventana de configuración inicial estilizada
+- Indicadores visuales de estado de las bacterias
