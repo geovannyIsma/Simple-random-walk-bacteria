@@ -25,16 +25,16 @@ def generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MAR
         # Ajustar los límites para que la comida no se genere en el borde
         x = random.randint(1, (ANCHO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_HORIZONTAL
         y = random.randint(1, (ALTO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_VERTICAL
-        
+
         # Verificar que la posición está dentro del área jugable
-        if (MARGEN_HORIZONTAL <= x <= ANCHO + MARGEN_HORIZONTAL - TAMANO_CELDA and 
-            MARGEN_VERTICAL <= y <= ALTO + MARGEN_VERTICAL - TAMANO_CELDA):
+        if (MARGEN_HORIZONTAL <= x <= ANCHO + MARGEN_HORIZONTAL - TAMANO_CELDA and
+                MARGEN_VERTICAL <= y <= ALTO + MARGEN_VERTICAL - TAMANO_CELDA):
             posiciones_comida.append((x, y))
     return posiciones_comida
 
 
 def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO):
-    return (MARGEN <= x <= ANCHO + MARGEN - TAMANO_CELDA and 
+    return (MARGEN <= x <= ANCHO + MARGEN - TAMANO_CELDA and
             MARGEN <= y <= ALTO + MARGEN - TAMANO_CELDA)
 
 
@@ -82,7 +82,7 @@ def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos
         info_bacteria = f"Bacteria {bacteria.id}: Vida {bacteria.vida}/{vida_inicial}, {'Comió' if bacteria.comio_comida else 'No comió'}, Trazas: {cuenta_trazas}"
         texto = fuente.render(info_bacteria, True, (255, 255, 255))
         pantalla.blit(texto, (10, 70 + i * 40))
-        
+
         # Agregar contador de comidas y velocidad en azul
         info_stats = f"Comidas en este ciclo: {bacteria.comidas_este_ciclo} | Velocidad actual: {bacteria.velocidad}x"
         texto_stats = fuente.render(info_stats, True, (0, 191, 255))  # Azul claro
@@ -117,10 +117,8 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
                         num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, debug):
-
     bacterias = [Bacteria(i + 1, generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
                           vida_inicial) for i in range(num_particulas)]
-
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
 
     ciclos_restantes = num_ciclos
@@ -170,8 +168,8 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         continue
 
                     # El método mover ahora devuelve las comidas encontradas en el camino
-                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida, bacterias)
-                    
+                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida)
+
                     if debug:
                         print(f"Bacteria {bacteria.id} posición: {bacteria.posicion}")
 
@@ -183,7 +181,8 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
                     # Verificar colisiones en la posición final
                     for posicion_comida in posiciones_comida:
-                        if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
+                        if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO,
+                                                       TAMANO_CELDA):
                             if posicion_comida not in competencia_comida:
                                 competencia_comida[posicion_comida] = []
                             competencia_comida[posicion_comida].append(bacteria)
@@ -194,7 +193,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                     if bacterias_competidoras:
                         # Seleccionar una bacteria ganadora
                         bacteria_ganadora = resolver_competencia_comida(bacterias_competidoras)
-                        
+
                         # Marcar solo la bacteria ganadora como alimentada
                         for bacteria in bacterias_competidoras:
                             if bacteria == bacteria_ganadora:
@@ -203,7 +202,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                                 print(f"Bacteria {bacteria.id} comió en posición {posicion_comida}")
                                 print(f"  - Comidas en este ciclo: {bacteria.comidas_este_ciclo}")
                                 print(f"  - Velocidad actual: {bacteria.velocidad}")
-                        
+
                         comidas_para_eliminar.append(posicion_comida)
 
                 # Eliminar las comidas consumidas
@@ -241,9 +240,10 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         # Crear nuevas bacterias manteniendo las propiedades de las sobrevivientes
         bacterias = []
         for i, bacteria_anterior in enumerate(bacterias_sobrevivientes):
-            nueva_bacteria = Bacteria(bacterias_sobrevivientes[i].id,
-                generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
-                vida_inicial)
+            nueva_bacteria = Bacteria(i + 1,
+                                      generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL,
+                                                              MARGEN_VERTICAL),
+                                      vida_inicial)
             nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo  # Usar la velocidad siguiente
             nueva_bacteria.velocidad_siguiente_ciclo = bacteria_anterior.velocidad_siguiente_ciclo
             bacterias.append(nueva_bacteria)
@@ -264,19 +264,19 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         sys.exit()
 
             pantalla.fill((0, 0, 0))
-            
+
             # Mensaje principal
             mensaje = f"No hay bacterias vivas. {ciclos_restantes} ciclos no se ejecutaron."
             texto = fuente_grande.render(mensaje, True, (255, 255, 255))
             rect_texto = texto.get_rect(center=(1280 // 2, 800 // 2))
             pantalla.blit(texto, rect_texto)
-            
+
             # Mensaje ESC
             mensaje_esc = "ESC: Salir"
             texto_esc = fuente_pequena.render(mensaje_esc, True, (255, 255, 255))
             rect_esc = texto_esc.get_rect(bottomright=(1280 - 20, 800 - 20))
             pantalla.blit(texto_esc, rect_esc)
-            
+
             pygame.display.flip()
             reloj.tick(60)
 
