@@ -18,6 +18,7 @@ class Bacteria:
         x, y = self.posicion
         comida_objetivo = None
         comidas_encontradas = []
+        velocidad_original = self.velocidad  # Guardar la velocidad original
 
         if posiciones_comida:
             comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
@@ -71,6 +72,14 @@ class Bacteria:
                     self.comidas_registradas.add(comida)
                     comidas_encontradas.append(comida)
 
+            # Si la comida está en una posición inaccesible con el paso actual, reducir el paso a 1
+            if comida_objetivo and self.velocidad > 1:
+                fx, fy = comida_objetivo
+                if (x != fx and y != fy) and (abs(x - fx) < TAMANO_CELDA or abs(y - fy) < TAMANO_CELDA):
+                    self.velocidad = 1
+                    distancia_movimiento = TAMANO_CELDA * self.velocidad
+                    continue  # Reintentar el movimiento con la nueva velocidad
+
             self.posicion = nueva_posicion
             self.vida -= 1
 
@@ -78,6 +87,10 @@ class Bacteria:
                 self.trazas[nueva_posicion] += 1
             else:
                 self.trazas[nueva_posicion] = 1
+
+            # Restaurar la velocidad original después de comer
+            if comidas_encontradas:
+                self.velocidad = velocidad_original
 
             return comidas_encontradas
 
