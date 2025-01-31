@@ -5,6 +5,7 @@ from bacteria import Bacteria
 
 
 def generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
+    """Genera una posición inicial para una bacteria sin verificar colisiones"""
     lado = random.choice(["arriba", "abajo", "izquierda", "derecha"])
     vertical = random.randint(0, ANCHO // TAMANO_CELDA - 1)
     horizontal = random.randint(0, ALTO // TAMANO_CELDA - 1)
@@ -123,19 +124,28 @@ def resolver_competencia_comida(bacterias_competidoras):
 def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                        num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, debug):
-    # Crear bacterias iniciales con IDs del 1 al num_particulas
-    bacterias = [Bacteria(i + 1, generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
-                          vida_inicial) for i in range(num_particulas)]
+                        num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, ANCHO_VENTANA, debug):
+    # Crear bacterias sin verificar posiciones ocupadas
+    bacterias = [
+        Bacteria(
+            i + 1,
+            generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
+            vida_inicial
+        ) for i in range(num_particulas)
+    ]
+
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
 
-    ciclos_restantes = num_ciclos
+    ciclos_restantes = 0  # Inicializar en 0 en lugar de num_ciclos
+    bacterias_iniciales = num_particulas
+    comida_inicial = num_comida
 
     for ciclo in range(num_ciclos):
         print(f"\n=== CICLO {ciclo + 1} ===")
-        # Imprimir velocidades iniciales
+        # Imprimir posiciones y velocidades iniciales
+        print("\nPosiciones de las bacterias:")
         for bacteria in bacterias:
-            print(f"Bacteria {bacteria.id} inicia ciclo con velocidad: {bacteria.velocidad}")
+            print(f"Bacteria {bacteria.id}: Posición {bacteria.posicion}, Velocidad: {bacteria.velocidad}")
 
         ultimo_tiempo_movimiento = pygame.time.get_ticks()
 
@@ -175,11 +185,16 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                     if bacteria.vida <= 0:
                         continue
 
-                    # El método mover ahora devuelve las comidas encontradas en el camino
-                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida)
-
-                    if debug:
-                        print(f"Bacteria {bacteria.id} posición: {bacteria.posicion}")
+                    posicion_anterior = bacteria.posicion
+                    # Pasar todas las bacterias excepto la actual como otras_bacterias
+                    otras_bacterias = [b for b in bacterias if b.id != bacteria.id]
+                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida, otras_bacterias)
+                    
+                    # Imprimir cuando una bacteria se mueve
+                    if posicion_anterior != bacteria.posicion:
+                        print(f"Bacteria {bacteria.id} se movió de {posicion_anterior} a {bacteria.posicion}")
+                    elif bacteria.tiempo_espera > 0:
+                        print(f"Bacteria {bacteria.id} esperando en {bacteria.posicion} (tiempo de espera: {bacteria.tiempo_espera})")
 
                     # Registrar las comidas encontradas en el camino
                     for comida in comidas_encontradas:
@@ -259,34 +274,42 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
         pygame.time.delay(500)
 
-    if len(bacterias) == 0:
-        fuente_grande = pygame.font.SysFont("Courier New", 36)
-        fuente_pequena = pygame.font.SysFont("Courier New", 24)
-        while True:
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
+    # Modificar la condición para mostrar la pantalla final
+    fuente_grande = pygame.font.SysFont("Courier New", 32)
+    fuente_pequena = pygame.font.SysFont("Courier New", 24)
+    
+    while True:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
-                elif evento.type == pygame.KEYDOWN:
-                    if evento.key == pygame.K_ESCAPE:
-                        pygame.quit()
-                        sys.exit()
 
-            pantalla.fill((0, 0, 0))
+        pantalla.fill((0, 0, 0))
 
-            # Mensaje principal
-            mensaje = f"No hay bacterias vivas. {ciclos_restantes} ciclos no se ejecutaron."
-            texto = fuente_grande.render(mensaje, True, (255, 255, 255))
-            rect_texto = texto.get_rect(center=(1280 // 2, 800 // 2))
+        # Estadísticas finales
+        mensaje_estado = "No hay bacterias vivas." if len(bacterias) == 0 else "Simulación completada."
+        estadisticas = [
+            mensaje_estado,
+            f"Ciclos ejecutados: {num_ciclos - ciclos_restantes}",
+            f"Ciclos no ejecutados: {ciclos_restantes}",
+            f"Bacterias iniciales: {bacterias_iniciales}",
+            f"Bacterias finales: {len(bacterias)}",
+            f"Comida inicial: {comida_inicial}",
+            f"Comida restante: {len(posiciones_comida)}",
+            "",
+            "Presiona ESC para salir"
+        ]
+
+        # Mostrar cada línea de estadísticas
+        for i, linea in enumerate(estadisticas):
+            texto = fuente_grande.render(linea, True, (255, 255, 255))
+            rect_texto = texto.get_rect(center=(ANCHO_VENTANA // 2, 200 + i * 50))
             pantalla.blit(texto, rect_texto)
 
-            # Mensaje ESC
-            mensaje_esc = "ESC: Salir"
-            texto_esc = fuente_pequena.render(mensaje_esc, True, (255, 255, 255))
-            rect_esc = texto_esc.get_rect(bottomright=(1280 - 20, 800 - 20))
-            pantalla.blit(texto_esc, rect_esc)
+        pygame.display.flip()
+        reloj.tick(60)
 
-            pygame.display.flip()
-            reloj.tick(60)
-
-    pygame.quit()
