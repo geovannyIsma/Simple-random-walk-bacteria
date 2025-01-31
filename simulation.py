@@ -20,8 +20,11 @@ def generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN
 
 
 def generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
-    posiciones_comida = []
-    while len(posiciones_comida) < num_comida:
+    posiciones_comida = set()  # Usar set en lugar de lista para evitar duplicados
+    intentos = 0
+    max_intentos = num_comida * 10  # Límite de intentos para evitar bucles infinitos
+
+    while len(posiciones_comida) < num_comida and intentos < max_intentos:
         # Ajustar los límites para que la comida no se genere en el borde
         x = random.randint(1, (ANCHO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_HORIZONTAL
         y = random.randint(1, (ALTO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_VERTICAL
@@ -29,20 +32,24 @@ def generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MAR
         # Verificar que la posición está dentro del área jugable
         if (MARGEN_HORIZONTAL <= x <= ANCHO + MARGEN_HORIZONTAL - TAMANO_CELDA and
                 MARGEN_VERTICAL <= y <= ALTO + MARGEN_VERTICAL - TAMANO_CELDA):
-            posiciones_comida.append((x, y))
-    return posiciones_comida
+            posiciones_comida.add((x, y))
+        
+        intentos += 1
+
+    # Convertir el set a lista antes de retornar
+    return list(posiciones_comida)
 
 
-def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO):
+def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
     return (MARGEN <= x <= ANCHO + MARGEN - TAMANO_CELDA and
             MARGEN <= y <= ALTO + MARGEN - TAMANO_CELDA)
 
 
-def hay_colision(posicion_bacteria, posicion_comida, DISTANCIA_COLISION):
+def hay_colision(posicion_bacteria, posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
     bx, by = posicion_bacteria
     fx, fy = posicion_comida
     # Verificar que la comida está dentro del área jugable antes de detectar colisión
-    if not esta_dentro_pantalla(fx, fy, MARGEN, ANCHO, ALTO):
+    if not esta_dentro_pantalla(fx, fy, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
         return False
     distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
     return distancia <= DISTANCIA_COLISION
@@ -117,6 +124,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
                         num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, debug):
+    # Crear bacterias iniciales con IDs del 1 al num_particulas
     bacterias = [Bacteria(i + 1, generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
                           vida_inicial) for i in range(num_particulas)]
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
@@ -237,14 +245,15 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                 print(f"  - Velocidad siguiente ciclo: {bacteria.velocidad_siguiente_ciclo}")
                 bacterias_sobrevivientes.append(bacteria)
 
-        # Crear nuevas bacterias manteniendo las propiedades de las sobrevivientes
+        # Modificar esta sección para mantener los IDs originales
         bacterias = []
-        for i, bacteria_anterior in enumerate(bacterias_sobrevivientes):
-            nueva_bacteria = Bacteria(i + 1,
-                                      generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL,
-                                                              MARGEN_VERTICAL),
-                                      vida_inicial)
-            nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo  # Usar la velocidad siguiente
+        for bacteria_anterior in bacterias_sobrevivientes:
+            nueva_bacteria = Bacteria(
+                bacteria_anterior.id,  # Mantener el ID original
+                generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
+                vida_inicial
+            )
+            nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo
             nueva_bacteria.velocidad_siguiente_ciclo = bacteria_anterior.velocidad_siguiente_ciclo
             bacterias.append(nueva_bacteria)
 

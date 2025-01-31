@@ -37,21 +37,23 @@ class Bacteria:
         x2, y2 = fin
         comidas_encontradas = []
 
-        # Solo verifica colisiones en movimientos rectos y dentro del área jugable
-        if x1 == x2 or y1 == y2:  # Movimiento horizontal o vertical
-            for comida in posiciones_comida:
-                fx, fy = comida
-                # Verificar que la comida está dentro del área jugable
-                if not (MARGEN <= fx <= ANCHO + MARGEN - TAMANO_CELDA and
-                        MARGEN <= fy <= ALTO + MARGEN - TAMANO_CELDA):
-                    continue
-
-                # Para movimiento horizontal
-                if y1 == y2 and y1 == fy and min(x1, x2) <= fx <= max(x1, x2):
-                    comidas_encontradas.append(comida)
-                # Para movimiento vertical
-                elif x1 == x2 and x1 == fx and min(y1, y2) <= fy <= max(y1, y2):
-                    comidas_encontradas.append(comida)
+        # Verificar todas las posiciones intermedias en el camino
+        if x1 == x2:  # Movimiento vertical
+            paso = TAMANO_CELDA if y2 > y1 else -TAMANO_CELDA
+            for y in range(int(y1), int(y2) + (1 if y2 > y1 else -1), paso):
+                for comida in posiciones_comida:
+                    fx, fy = comida
+                    if abs(x1 - fx) <= DISTANCIA_COLISION and abs(y - fy) <= DISTANCIA_COLISION:
+                        if comida not in comidas_encontradas:
+                            comidas_encontradas.append(comida)
+        elif y1 == y2:  # Movimiento horizontal
+            paso = TAMANO_CELDA if x2 > x1 else -TAMANO_CELDA
+            for x in range(int(x1), int(x2) + (1 if x2 > x1 else -1), paso):
+                for comida in posiciones_comida:
+                    fx, fy = comida
+                    if abs(x - fx) <= DISTANCIA_COLISION and abs(y1 - fy) <= DISTANCIA_COLISION:
+                        if comida not in comidas_encontradas:
+                            comidas_encontradas.append(comida)
 
         return comidas_encontradas
 
@@ -120,34 +122,35 @@ class Bacteria:
 
             nueva_posicion = (nueva_x, nueva_y)
 
-            # Verificar si hay colisión con otras bacterias
+            # Verificar colisiones con otras bacterias
             if otras_bacterias and self.predecir_colision_con_bacterias(nueva_posicion, otras_bacterias):
-                # Si hay colisión, intentar la dirección opuesta
                 direccion_opuesta = self.obtener_direccion_opuesta(movimiento)
                 if direccion_opuesta and direccion_opuesta not in direcciones_intentadas:
                     movimientos.insert(0, direccion_opuesta)
                 continue
 
-            # Si no hay colisión, realizar el movimiento
-            if nueva_x != x or nueva_y != y:
-                if posiciones_comida:
-                    comidas_en_camino = self.verificar_comida_en_trayectoria(
-                        self.posicion, nueva_posicion, posiciones_comida,
-                        TAMANO_CELDA / 2, MARGEN, ANCHO, ALTO, TAMANO_CELDA)
-                    for comida in comidas_en_camino:
-                        if comida not in self.comidas_registradas:
-                            self.comidas_registradas.add(comida)
-                            comidas_encontradas.append(comida)
+            # Verificar comidas en el camino antes de moverse
+            if posiciones_comida:
+                comidas_en_camino = self.verificar_comida_en_trayectoria(
+                    self.posicion, nueva_posicion, posiciones_comida,
+                    TAMANO_CELDA / 2, MARGEN, ANCHO, ALTO, TAMANO_CELDA)
+                
+                # Procesar inmediatamente las comidas encontradas
+                for comida in comidas_en_camino:
+                    if comida not in self.comidas_registradas:
+                        self.comidas_registradas.add(comida)
+                        comidas_encontradas.append(comida)
 
-                self.posicion = nueva_posicion
-                self.vida -= 1
+            # Realizar el movimiento
+            self.posicion = nueva_posicion
+            self.vida -= 1
 
-                if nueva_posicion in self.trazas:
-                    self.trazas[nueva_posicion] += 1
-                else:
-                    self.trazas[nueva_posicion] = 1
+            if nueva_posicion in self.trazas:
+                self.trazas[nueva_posicion] += 1
+            else:
+                self.trazas[nueva_posicion] = 1
 
-                return comidas_encontradas
+            return comidas_encontradas
 
         return []
 
