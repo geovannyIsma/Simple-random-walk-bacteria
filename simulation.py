@@ -117,8 +117,10 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
                         num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, debug):
+
     bacterias = [Bacteria(i + 1, generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
                           vida_inicial) for i in range(num_particulas)]
+
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
 
     ciclos_restantes = num_ciclos
@@ -168,7 +170,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         continue
 
                     # El método mover ahora devuelve las comidas encontradas en el camino
-                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida)
+                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida, bacterias)
                     
                     if debug:
                         print(f"Bacteria {bacteria.id} posición: {bacteria.posicion}")
@@ -239,7 +241,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         # Crear nuevas bacterias manteniendo las propiedades de las sobrevivientes
         bacterias = []
         for i, bacteria_anterior in enumerate(bacterias_sobrevivientes):
-            nueva_bacteria = Bacteria(i + 1, 
+            nueva_bacteria = Bacteria(bacterias_sobrevivientes[i].id,
                 generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
                 vida_inicial)
             nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo  # Usar la velocidad siguiente

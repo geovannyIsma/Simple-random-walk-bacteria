@@ -1,6 +1,7 @@
 import random
 import math
 
+
 class Bacteria:
     def __init__(self, id, posicion, vida_inicial):
         self.id = id
@@ -10,8 +11,90 @@ class Bacteria:
         self.comio_comida = False
         self.comidas_este_ciclo = 0
         self.velocidad = 1
-        self.velocidad_siguiente_ciclo = 1  # Nueva variable para controlar el aumento
-        self.comidas_registradas = set()  # Nuevo: para evitar contar la misma comida múltiples veces
+        self.velocidad_siguiente_ciclo = 1
+        self.comidas_registradas = set()
+
+    def mover(self, TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida=None, otras_bacterias=None):
+        x, y = self.posicion
+        comida_objetivo = None
+        comidas_encontradas = []
+        velocidad_original = self.velocidad  # Guardar la velocidad original
+
+        if posiciones_comida:
+            comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
+            if comida_objetivo:
+                fx, fy = comida_objetivo
+                if x == fx:
+                    movimientos = ["arriba"] if fy < y else ["abajo"]
+                elif y == fy:
+                    movimientos = ["izquierda"] if fx < x else ["derecha"]
+            else:
+                movimientos = ["arriba", "abajo", "izquierda", "derecha"]
+                random.shuffle(movimientos)
+        else:
+            movimientos = ["arriba", "abajo", "izquierda", "derecha"]
+            random.shuffle(movimientos)
+
+        distancia_movimiento = TAMANO_CELDA * self.velocidad
+        while movimientos:
+            movimiento = movimientos.pop(0)
+            nueva_x, nueva_y = x, y
+
+            if movimiento == "arriba":
+                nueva_y = y - distancia_movimiento
+                if nueva_y < MARGEN:
+                    nueva_y = MARGEN
+            elif movimiento == "abajo":
+                nueva_y = y + distancia_movimiento
+                if nueva_y > ALTO + MARGEN:
+                    nueva_y = ALTO + MARGEN
+            elif movimiento == "derecha":
+                nueva_x = x + distancia_movimiento
+                if nueva_x > ANCHO + MARGEN:
+                    nueva_x = ANCHO + MARGEN
+            else:
+                nueva_x = x - distancia_movimiento
+                if nueva_x < MARGEN:
+                    nueva_x = MARGEN
+
+            nueva_posicion = (nueva_x, nueva_y)
+            if otras_bacterias and any(b.posicion == nueva_posicion for b in otras_bacterias):
+                if random.choice([True, False]):
+                    continue  # Esta bacteria no se mueve, intenta otro movimiento
+                else:
+                    # La otra bacteria no se mueve, esta bacteria se mueve
+                    break
+
+            comidas_en_camino = self.verificar_comida_en_trayectoria(self.posicion, nueva_posicion, posiciones_comida,
+                                                                     TAMANO_CELDA / 2)
+            for comida in comidas_en_camino:
+                if comida not in self.comidas_registradas:
+                    self.comidas_registradas.add(comida)
+                    comidas_encontradas.append(comida)
+
+            # Si la comida está en una posición inaccesible con el paso actual, reducir el paso a 1
+            if comida_objetivo and self.velocidad > 1:
+                fx, fy = comida_objetivo
+                if (x != fx and y != fy) and (abs(x - fx) < TAMANO_CELDA or abs(y - fy) < TAMANO_CELDA):
+                    self.velocidad = 1
+                    distancia_movimiento = TAMANO_CELDA * self.velocidad
+                    continue  # Reintentar el movimiento con la nueva velocidad
+
+            self.posicion = nueva_posicion
+            self.vida -= 1
+
+            if nueva_posicion in self.trazas:
+                self.trazas[nueva_posicion] += 1
+            else:
+                self.trazas[nueva_posicion] = 1
+
+            # Restaurar la velocidad original después de comer
+            if comidas_encontradas:
+                self.velocidad = velocidad_original
+
+            return comidas_encontradas
+
+        return []
 
     def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
         """Detecta comida en líneas horizontales y verticales"""
@@ -53,6 +136,7 @@ class Bacteria:
         
         return comidas_encontradas
 
+<<<<<<< HEAD
     def predecir_colision_con_bacterias(self, nueva_posicion, otras_bacterias):
         """Verifica si alguna otra bacteria se encuentra o se moverá a la nueva posición"""
         for otra in otras_bacterias:
@@ -150,6 +234,10 @@ class Bacteria:
         return []
 
     def verificar_colision(self, posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
+=======
+    def verificar_colision(self, posicion_comida, DISTANCIA_COLISION):
+        bx, by = self.posicion
+>>>>>>> 463cfec6b3333ff89e4d5443d72a5f18fa00c0fe
         fx, fy = posicion_comida
         # Verificar que la comida está dentro del área jugable
         if not (MARGEN <= fx <= ANCHO + MARGEN - TAMANO_CELDA and 
