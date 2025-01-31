@@ -22,19 +22,28 @@ def generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN
 def generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
     posiciones_comida = []
     while len(posiciones_comida) < num_comida:
-        x = random.randint(0, ANCHO // TAMANO_CELDA - 1) * TAMANO_CELDA + MARGEN_HORIZONTAL
-        y = random.randint(0, ALTO // TAMANO_CELDA - 1) * TAMANO_CELDA + MARGEN_VERTICAL
-        posiciones_comida.append((x, y))
+        # Ajustar los límites para que la comida no se genere en el borde
+        x = random.randint(1, (ANCHO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_HORIZONTAL
+        y = random.randint(1, (ALTO // TAMANO_CELDA) - 2) * TAMANO_CELDA + MARGEN_VERTICAL
+        
+        # Verificar que la posición está dentro del área jugable
+        if (MARGEN_HORIZONTAL <= x <= ANCHO + MARGEN_HORIZONTAL - TAMANO_CELDA and 
+            MARGEN_VERTICAL <= y <= ALTO + MARGEN_VERTICAL - TAMANO_CELDA):
+            posiciones_comida.append((x, y))
     return posiciones_comida
 
 
 def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO):
-    return MARGEN <= x < ANCHO + MARGEN and MARGEN <= y < ALTO + MARGEN
+    return (MARGEN <= x <= ANCHO + MARGEN - TAMANO_CELDA and 
+            MARGEN <= y <= ALTO + MARGEN - TAMANO_CELDA)
 
 
 def hay_colision(posicion_bacteria, posicion_comida, DISTANCIA_COLISION):
     bx, by = posicion_bacteria
     fx, fy = posicion_comida
+    # Verificar que la comida está dentro del área jugable antes de detectar colisión
+    if not esta_dentro_pantalla(fx, fy, MARGEN, ANCHO, ALTO):
+        return False
     distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
     return distancia <= DISTANCIA_COLISION
 
@@ -172,7 +181,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
                     # Verificar colisiones en la posición final
                     for posicion_comida in posiciones_comida:
-                        if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION):
+                        if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
                             if posicion_comida not in competencia_comida:
                                 competencia_comida[posicion_comida] = []
                             competencia_comida[posicion_comida].append(bacteria)
