@@ -1,5 +1,6 @@
 import random
 import math
+import pygame  # Importar pygame para manejar imágenes
 
 
 class Bacteria:
@@ -15,6 +16,26 @@ class Bacteria:
         self.comidas_registradas = set()  # Nuevo: para evitar contar la misma comida múltiples veces
         self.tiempo_espera = 0  # Nuevo: contador de tiempo de espera
         self.direccion_inicial = None  # Nueva variable para recordar la dirección inicial
+        self.campo_repulsion = 30  # Radio del campo de repulsión
+        self.fuerza_repulsion = 1.5  # Factor de fuerza de repulsión
+        self.ultima_celda = None  # Para tracking de cuadrícula
+        self.imagen = None  # Nueva propiedad para la imagen
+        self.rect = None    # Nueva propiedad para el rectángulo de la imagen
+
+    def cargar_imagen(self, ruta_imagen, tamano):
+        """Carga y escala la imagen de la bacteria"""
+        try:
+            imagen_original = pygame.image.load(ruta_imagen).convert_alpha()
+            self.imagen = pygame.transform.scale(imagen_original, (tamano, tamano))
+            self.rect = self.imagen.get_rect(center=self.posicion)
+        except pygame.error as e:
+            print(f"No se pudo cargar la imagen: {e}")
+            self.imagen = None
+
+    def actualizar_rect(self):
+        """Actualiza la posición del rectángulo de la imagen"""
+        if self.rect:
+            self.rect.center = self.posicion
 
     def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
         """Detecta comida en líneas horizontales y verticales"""
@@ -84,74 +105,110 @@ class Bacteria:
         }
         return opuestos.get(direccion)
 
+    def calcular_fuerzas_repulsion(self, otras_bacterias, TAMANO_CELDA):
+        """Calcula las fuerzas de repulsión de otras bacterias"""
+        fx = fy = 0
+        x, y = self.posicion
+        
+        for otra in otras_bacterias:
+            if otra.id == self.id:
+                continue
+                
+            ox, oy = otra.posicion
+            dx = x - ox
+            dy = y - oy
+            distancia = math.sqrt(dx*dx + dy*dy)
+            
+            if distancia < self.campo_repulsion:
+                # Fuerza inversamente proporcional al cuadrado de la distancia
+                fuerza = (self.campo_repulsion - distancia) * self.fuerza_repulsion
+                # Evitar división por cero
+                if distancia > 0:
+                    fx += (dx/distancia) * fuerza
+                    fy += (dy/distancia) * fuerza
+        
+        return fx, fy
+
+    def obtener_celda_actual(self, TAMANO_CELDA):
+        """Retorna la celda de la cuadrícula en la que está la bacteria"""
+        x, y = self.posicion
+        celda_x = x // TAMANO_CELDA
+        celda_y = y // TAMANO_CELDA
+        return (celda_x, celda_y)
+
     def mover(self, TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida=None, otras_bacterias=None):
         x, y = self.posicion
         comidas_encontradas = []
-
-        # Si es el primer movimiento, asignar una dirección inicial basada en el ID
+        
+        # Asegurar dirección inicial correcta
         if self.direccion_inicial is None:
-            direcciones = ["arriba", "derecha", "abajo", "izquierda"]
-            self.direccion_inicial = direcciones[self.id % 4]
-            return self.mover_en_direccion(self.direccion_inicial, TAMANO_CELDA, MARGEN, ANCHO, ALTO)
-
-        # Si hay otras bacterias demasiado cerca, incrementar espera y quedarse quieto
-        if otras_bacterias and self.predecir_colision_con_bacterias(self.posicion, otras_bacterias):
-            self.tiempo_espera += 1
-            self.vida -= 1
-            print(f"Bacteria {self.id} esperando por colisión (tiempo: {self.tiempo_espera})")
-            return []
-
-        # Resetear tiempo de espera al moverse
-        self.tiempo_espera = 0
-
-        # Resto de la lógica de movimiento
-        if posiciones_comida:
-            comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
-            if comida_objetivo:
-                fx, fy = comida_objetivo
-                if x == fx:
-                    movimientos = ["arriba"] if fy < y else ["abajo"]
-                elif y == fy:
-                    movimientos = ["izquierda"] if fx < x else ["derecha"]
-            else:
-                movimientos = ["arriba", "abajo", "izquierda", "derecha"]
-                random.shuffle(movimientos)
-        else:
-            movimientos = ["arriba", "abajo", "izquierda", "derecha"]
-            random.shuffle(movimientos)
-
-        distancia_movimiento = TAMANO_CELDA * self.velocidad
-        direcciones_intentadas = set()
-
-        while movimientos and len(direcciones_intentadas) < 4:
-            movimiento = movimientos.pop(0)
-            if movimiento in direcciones_intentadas:
-                continue
-
-            direcciones_intentadas.add(movimiento)
-            nueva_x, nueva_y = x, y
-
-            if movimiento == "arriba":
-                nueva_y = max(MARGEN, y - distancia_movimiento)
-            elif movimiento == "abajo":
-                nueva_y = min(ALTO + MARGEN, y + distancia_movimiento)
-            elif movimiento == "derecha":
-                nueva_x = min(ANCHO + MARGEN, x + distancia_movimiento)
-            else:  # izquierda
-                nueva_x = max(MARGEN, x - distancia_movimiento)
-
-            nueva_posicion = (nueva_x, nueva_y)
-
-            # Si hay colisión predicha, no moverse y continuar con otra dirección
-            if otras_bacterias and self.predecir_colision_con_bacterias(nueva_posicion, otras_bacterias):
-                continue
-
-            # Si llegamos aquí, es seguro moverse
-            self.tiempo_espera = 0  # Reiniciar tiempo de espera al moverse exitosamente
+            # Asignar dirección inicial basada en la posición de aparición
+            if y == MARGEN:  # Apareció arriba
+                self.direccion_inicial = "abajo"
+            elif y >= ALTO + MARGEN:  # Apareció abajo
+                self.direccion_inicial = "arriba"
+            elif x == MARGEN:  # Apareció a la izquierda
+                self.direccion_inicial = "derecha"
+            else:  # Apareció a la derecha
+                self.direccion_inicial = "izquierda"
             
+            # Realizar el primer movimiento en la dirección inicial
+            dx = dy = 0
+            if self.direccion_inicial in ["izquierda", "derecha"]:
+                dx = 1 if self.direccion_inicial == "derecha" else -1
+            else:
+                dy = 1 if self.direccion_inicial == "abajo" else -1
+                
+        else:
+            # Comportamiento normal después del primer movimiento
+            direcciones_posibles = ["horizontal", "vertical"]
+            direccion_principal = random.choice(direcciones_posibles)
+            
+            dx = dy = 0
+            
+            # Detectar comida cercana
+            if posiciones_comida:
+                comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
+                if comida_objetivo:
+                    fx, fy = comida_objetivo
+                    if abs(x - fx) > abs(y - fy):
+                        direccion_principal = "horizontal"
+                        dx = 1 if fx > x else -1
+                    else:
+                        direccion_principal = "vertical"
+                        dy = 1 if fy > y else -1
+            
+            # Si no hay comida o no se decidió dirección, mover aleatoriamente
+            if dx == 0 and dy == 0:
+                if direccion_principal == "horizontal":
+                    dx = random.choice([-1, 1])
+                else:
+                    dy = random.choice([-1, 1])
+
+        # Calcular nueva posición
+        velocidad_efectiva = TAMANO_CELDA * self.velocidad
+        nueva_x = x + dx * velocidad_efectiva
+        nueva_y = y + dy * velocidad_efectiva
+
+        # Limitar al área de juego
+        nueva_x = max(MARGEN, min(ANCHO + MARGEN - TAMANO_CELDA, nueva_x))
+        nueva_y = max(MARGEN, min(ALTO + MARGEN - TAMANO_CELDA, nueva_y))
+
+        # Verificar colisiones con otras bacterias
+        puede_moverse = True
+        if otras_bacterias:
+            for otra in otras_bacterias:
+                if otra.id != self.id:
+                    dist = math.sqrt((nueva_x - otra.posicion[0])**2 + (nueva_y - otra.posicion[1])**2)
+                    if dist < TAMANO_CELDA:
+                        puede_moverse = False
+                        break
+
+        if puede_moverse:
+            # Verificar comida en el camino
             if posiciones_comida:
                 comidas_en_camino = self.verificar_comida_en_trayectoria(
-                    self.posicion, nueva_posicion, posiciones_comida,
+                    self.posicion, (nueva_x, nueva_y), posiciones_comida,
                     TAMANO_CELDA / 2, MARGEN, ANCHO, ALTO, TAMANO_CELDA)
                 
                 for comida in comidas_en_camino:
@@ -159,20 +216,16 @@ class Bacteria:
                         self.comidas_registradas.add(comida)
                         comidas_encontradas.append(comida)
 
-            self.posicion = nueva_posicion
-            self.vida -= 1
-
-            if nueva_posicion in self.trazas:
-                self.trazas[nueva_posicion] += 1
+            self.posicion = (nueva_x, nueva_y)
+            
+            if self.posicion in self.trazas:
+                self.trazas[self.posicion] += 1
             else:
-                self.trazas[nueva_posicion] = 1
+                self.trazas[self.posicion] = 1
 
-            return comidas_encontradas
-
-        # Si no se pudo mover en ninguna dirección, perder vida
-        self.tiempo_espera += 1  # Incrementar tiempo de espera
         self.vida -= 1
-        return []
+        self.actualizar_rect()  # Actualizar la posición del rectángulo de la imagen
+        return comidas_encontradas
 
     def mover_en_direccion(self, direccion, TAMANO_CELDA, MARGEN, ANCHO, ALTO):
         x, y = self.posicion
@@ -192,6 +245,7 @@ class Bacteria:
             self.posicion = (nueva_x, y)
 
         self.vida -= 1
+        self.actualizar_rect()  # Actualizar la posición del rectángulo de la imagen
         return []
 
     def verificar_colision(self, posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):

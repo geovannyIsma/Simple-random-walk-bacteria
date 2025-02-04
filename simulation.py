@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 from bacteria import Bacteria
+import os
 
 
 def generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
@@ -111,7 +112,14 @@ def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos
 def dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACTERIA):
     fuente = pygame.font.SysFont("Courier New", 16)
     for bacteria in bacterias:
-        pygame.draw.circle(pantalla, COLOR_BACTERIA, bacteria.posicion, RADIO_BACTERIA)
+        if bacteria.imagen:
+            bacteria.actualizar_rect()
+            pantalla.blit(bacteria.imagen, bacteria.rect)
+        else:
+            # Fallback al círculo si no hay imagen
+            pygame.draw.circle(pantalla, COLOR_BACTERIA, bacteria.posicion, RADIO_BACTERIA)
+        
+        # Dibujar el ID de la bacteria
         texto = fuente.render(str(bacteria.id), True, (255, 255, 255))
         pantalla.blit(texto, (bacteria.posicion[0] + RADIO_BACTERIA, bacteria.posicion[1] - RADIO_BACTERIA))
 
@@ -125,6 +133,9 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
                         num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, ANCHO_VENTANA, debug):
+    # Cargar imagen para las bacterias
+    ruta_imagen = os.path.join(os.path.dirname(__file__), 'assets', 'bacteria.png')
+    
     # Crear bacterias sin verificar posiciones ocupadas
     bacterias = [
         Bacteria(
@@ -133,6 +144,10 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
             vida_inicial
         ) for i in range(num_particulas)
     ]
+    
+    # Cargar imagen para cada bacteria
+    for bacteria in bacterias:
+        bacteria.cargar_imagen(ruta_imagen, TAMANO_CELDA)
 
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
 
@@ -245,6 +260,9 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         pygame.draw.circle(pantalla, color, punto, 3)
                 dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida,
                                    num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA)
+                for bacteria in bacterias:
+                    pygame.draw.circle(pantalla, (100, 100, 100), bacteria.posicion, 
+                                     bacteria.campo_repulsion, 1)
             pygame.display.flip()
             reloj.tick(60)
 
