@@ -3,6 +3,7 @@ import random
 import sys
 from bacteria import Bacteria
 import os
+from resource_manager import ResourceManager
 
 
 def generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
@@ -129,12 +130,61 @@ def resolver_competencia_comida(bacterias_competidoras):
     return random.choice(bacterias_competidoras)
 
 
+def dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, num_comida_actual, vida_inicial, resource_manager, MARGEN_VERTICAL):
+    """Dibuja los cuadros de información en la parte superior"""
+    box_width = 150
+    box_height = 40
+    box_margin = 20
+    icon_size = 30
+    start_x = 300  # Posición inicial X ajustada
+    y = MARGEN_VERTICAL // 2 - box_height // 2  # Centrado verticalmente en el margen superior
+    
+    # Configuración de fuente personalizada
+    try:
+        font_path = os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'vhs-gothic.ttf')
+        fuente = pygame.font.Font(font_path, 16)
+    except:
+        # Fallback a la fuente del sistema si no se puede cargar la fuente personalizada
+        print("No se pudo cargar la fuente VHS Gothic, usando fuente del sistema")
+        fuente = pygame.font.SysFont("Courier New", 16)
+    
+    # Datos para los cuadros
+    boxes = [
+        ("cicle-icon", f"{ciclo + 1}/{num_ciclos}"),
+        ("bacteria-icon", str(len(bacterias_vivas))),
+        ("food-icon", str(num_comida_actual)),
+        ("hp-icon", str(vida_inicial))
+    ]
+    
+    for i, (icon_name, value) in enumerate(boxes):
+        # Posición del cuadro
+        box_x = start_x + (box_width + box_margin) * i
+        
+        # Dibujar el borde del cuadro
+        pygame.draw.rect(pantalla, (255, 255, 255), (box_x, y, box_width, box_height), 1)
+        
+        # Cargar y dibujar el icono
+        icon = resource_manager.get_scaled_image(icon_name, (icon_size, icon_size))
+        if icon:
+            icon_x = box_x + 5
+            icon_y = y + (box_height - icon_size) // 2
+            pantalla.blit(icon, (icon_x, icon_y))
+        
+        # Dibujar el texto
+        texto = fuente.render(value, True, (255, 255, 255))
+        text_x = box_x + icon_size + 10
+        text_y = y + (box_height - texto.get_height()) // 2
+        pantalla.blit(texto, (text_x, text_y))
+
+
 def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
                         COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
                         RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
                         num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, ANCHO_VENTANA, debug):
-    # Cargar imagen para las bacterias
-    ruta_imagen = os.path.join(os.path.dirname(__file__), 'assets', 'bacteria.png')
+    
+    resource_manager = ResourceManager()
+    # Aumentar el tamaño de la comida (multiplicar RADIO_COMIDA por 3 en lugar de 2)
+    food_image = resource_manager.get_scaled_image('food', (RADIO_COMIDA * 8, RADIO_COMIDA * 8))
     
     # Crear bacterias sin verificar posiciones ocupadas
     bacterias = [
@@ -145,9 +195,19 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         ) for i in range(num_particulas)
     ]
     
-    # Cargar imagen para cada bacteria
+    # Cargar imagen para cada bacteria con tamaño reducido
     for bacteria in bacterias:
-        bacteria.cargar_imagen(ruta_imagen, TAMANO_CELDA)
+        bacteria.cargar_imagen(int(TAMANO_CELDA * 0.75))  # Reducir el tamaño al 75%
+
+    # Modificar la función para dibujar comida
+    def dibujar_comida(pantalla, posiciones_comida):
+        if food_image:
+            for pos in posiciones_comida:
+                rect = food_image.get_rect(center=pos)
+                pantalla.blit(food_image, rect)
+        else:
+            for pos in posiciones_comida:
+                pygame.draw.circle(pantalla, COLOR_COMIDA, pos, RADIO_COMIDA)
 
     posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
 
@@ -179,8 +239,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
             pantalla.fill(COLOR_FONDO)
             dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
-            for posicion_comida in posiciones_comida:
-                pygame.draw.circle(pantalla, COLOR_COMIDA, posicion_comida, RADIO_COMIDA)
+            dibujar_comida(pantalla, posiciones_comida)
 
             if debug:
                 for bacteria in bacterias:
@@ -250,9 +309,15 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
             pantalla.fill(COLOR_FONDO)
             dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
-            for posicion_comida in posiciones_comida:
-                pygame.draw.circle(pantalla, COLOR_COMIDA, posicion_comida, RADIO_COMIDA)
+            dibujar_comida(pantalla, posiciones_comida)
             dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACTERIA)
+            
+            # Dibujar los cuadros de información siempre (en modo debug y no debug)
+            bacterias_vivas = [b for b in bacterias if b.vida > 0]
+            dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, 
+                             len(posiciones_comida), vida_inicial, resource_manager, 
+                             MARGEN_VERTICAL)
+
             if debug:
                 for bacteria in bacterias:
                     for punto, cuenta in bacteria.trazas.items():
@@ -288,6 +353,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
             )
             nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo
             nueva_bacteria.velocidad_siguiente_ciclo = bacteria_anterior.velocidad_siguiente_ciclo
+            nueva_bacteria.cargar_imagen(TAMANO_CELDA)  # Cargar la imagen para la nueva bacteria
             bacterias.append(nueva_bacteria)
 
         pygame.time.delay(500)

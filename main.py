@@ -3,9 +3,9 @@ from input_window import solicitar_datos
 from simulation import ejecutar_simulacion
 
 # Configuración inicial
-ANCHO_VENTANA, ALTO_VENTANA = 1280, 800
-MARGEN = 100
-TAMANO_CELDA = 30
+ANCHO_VENTANA, ALTO_VENTANA = 1920, 1080  # Aumentado a 1920x1080
+MARGEN = 120  # Aumentado proporcionalmente
+TAMANO_CELDA = 40  # Aumentado para mejor visibilidad
 
 ANCHO = (ANCHO_VENTANA - 2 * MARGEN) // TAMANO_CELDA * TAMANO_CELDA
 ALTO = (ALTO_VENTANA - 2 * MARGEN) // TAMANO_CELDA * TAMANO_CELDA

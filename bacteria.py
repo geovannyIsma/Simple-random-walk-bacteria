@@ -1,7 +1,7 @@
 import random
 import math
 import pygame  # Importar pygame para manejar imágenes
-
+from resource_manager import ResourceManager
 
 class Bacteria:
     def __init__(self, id, posicion, vida_inicial):
@@ -16,26 +16,41 @@ class Bacteria:
         self.comidas_registradas = set()  # Nuevo: para evitar contar la misma comida múltiples veces
         self.tiempo_espera = 0  # Nuevo: contador de tiempo de espera
         self.direccion_inicial = None  # Nueva variable para recordar la dirección inicial
-        self.campo_repulsion = 30  # Radio del campo de repulsión
-        self.fuerza_repulsion = 1.5  # Factor de fuerza de repulsión
+        self.campo_repulsion = 40  # Aumentado de 30 a 40
+        self.fuerza_repulsion = 2.0  # Aumentado de 1.5 a 2.0
         self.ultima_celda = None  # Para tracking de cuadrícula
-        self.imagen = None  # Nueva propiedad para la imagen
-        self.rect = None    # Nueva propiedad para el rectángulo de la imagen
+        self.resource_manager = ResourceManager()
+        self.imagen = None
+        self.rect = None
+        self.tamano = None
+        self.tamano_original = None  # Nueva propiedad para recordar el tamaño original
 
-    def cargar_imagen(self, ruta_imagen, tamano):
-        """Carga y escala la imagen de la bacteria"""
-        try:
-            imagen_original = pygame.image.load(ruta_imagen).convert_alpha()
-            self.imagen = pygame.transform.scale(imagen_original, (tamano, tamano))
-            self.rect = self.imagen.get_rect(center=self.posicion)
-        except pygame.error as e:
-            print(f"No se pudo cargar la imagen: {e}")
-            self.imagen = None
+    def cargar_imagen(self, tamano):
+        """Carga la imagen de la bacteria usando el ResourceManager"""
+        self.tamano_original = tamano
+        self.tamano = tamano
+        if self.imagen is None:  # Solo cargar si no hay imagen
+            # Centrar la imagen más pequeña en la celda
+            self.imagen = self.resource_manager.get_scaled_image('bacteria', (tamano, tamano))
+            if self.imagen:
+                self.rect = self.imagen.get_rect()
+                self.rect.center = self.posicion
+            else:
+                print(f"No se pudo cargar la imagen para la bacteria {self.id}")
 
     def actualizar_rect(self):
         """Actualiza la posición del rectángulo de la imagen"""
-        if self.rect:
+        if self.rect and self.imagen:
             self.rect.center = self.posicion
+            
+    def __copy__(self):
+        """Implementar método de copia para mantener las propiedades importantes"""
+        nueva_bacteria = Bacteria(self.id, self.posicion, self.vida)
+        nueva_bacteria.velocidad = self.velocidad
+        nueva_bacteria.velocidad_siguiente_ciclo = self.velocidad_siguiente_ciclo
+        if self.tamano:
+            nueva_bacteria.cargar_imagen(self.tamano)
+        return nueva_bacteria
 
     def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
         """Detecta comida en líneas horizontales y verticales"""
@@ -86,7 +101,7 @@ class Bacteria:
             return False
             
         x, y = nueva_posicion
-        margen_seguridad = 20 + (self.tiempo_espera * 5)  # Reducido el factor de incremento
+        margen_seguridad = 25 + (self.tiempo_espera * 5)  # Aumentado de 20 a 25
         
         for otra in otras_bacterias:
             ox, oy = otra.posicion
