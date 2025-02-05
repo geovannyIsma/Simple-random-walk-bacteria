@@ -1,6 +1,7 @@
 import pygame
 from input_window import solicitar_datos
 from simulation import ejecutar_simulacion
+from main_menu import MainMenu
 
 # Configuración inicial
 ANCHO_VENTANA, ALTO_VENTANA = 1920, 1080  # Aumentado a 1920x1080
@@ -30,13 +31,15 @@ pygame.display.set_caption("Simulación de Bacteria")
 reloj = pygame.time.Clock()
 
 def principal():
-    resultado = solicitar_datos()
-    if resultado:
-        num_ciclos, vida_inicial, num_comida, num_particulas = resultado
-        ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
-                       COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
-                       RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                       num_ciclos, vida_inicial, num_comida, num_particulas, ALTO_VENTANA, ANCHO_VENTANA, debug=False)
+    menu = MainMenu(pantalla)
+    if menu.run():  # Si el usuario presiona "Empezar"
+        resultado = solicitar_datos()
+        if resultado:
+            num_ciclos, vida_inicial, num_comida, num_particulas = resultado
+            ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
+                           COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
+                           RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
+                           num_ciclos, vida_inicial, num_comida, num_particulas, ALTO_VENTANA, ANCHO_VENTANA, debug=False)
 
 if __name__ == "__main__":
     principal()
