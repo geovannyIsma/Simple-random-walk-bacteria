@@ -39,8 +39,8 @@ def generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MAR
         
         intentos += 1
 
-    # Convertir el set a lista antes de retornar
-    return list(posiciones_comida)
+    # Retornar directamente el set en lugar de lista para posibilitar búsquedas O(1)
+    return posiciones_comida
 
 
 def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
@@ -48,21 +48,22 @@ def esta_dentro_pantalla(x, y, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
             MARGEN <= y <= ALTO + MARGEN - TAMANO_CELDA)
 
 
-def hay_colision(posicion_bacteria, posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
+def hay_colision(posicion_bacteria, posicion_comida, config):
     bx, by = posicion_bacteria
     fx, fy = posicion_comida
     # Verificar que la comida está dentro del área jugable antes de detectar colisión
-    if not esta_dentro_pantalla(fx, fy, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
+    if not esta_dentro_pantalla(fx, fy, config.display.MARGEN, config.display.ANCHO, config.display.ALTO, config.display.TAMANO_CELDA):
         return False
-    distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
-    return distancia <= DISTANCIA_COLISION
+    # Optimización: evitar usar math.sqrt comparando cuadrados
+    dist_cuadrada = (bx - fx) ** 2 + (by - fy) ** 2
+    return dist_cuadrada <= (config.physics.DISTANCIA_COLISION ** 2)
 
 
-def dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL):
-    for x in range(MARGEN_HORIZONTAL, ANCHO + MARGEN_HORIZONTAL + 1, TAMANO_CELDA):
-        pygame.draw.line(pantalla, (50, 50, 50), (x, MARGEN_VERTICAL), (x, ALTO + MARGEN_VERTICAL))
-    for y in range(MARGEN_VERTICAL, ALTO + MARGEN_VERTICAL + 1, TAMANO_CELDA):
-        pygame.draw.line(pantalla, (50, 50, 50), (MARGEN_HORIZONTAL, y), (ANCHO + MARGEN_HORIZONTAL, y))
+def dibujar_cuadricula(pantalla, config):
+    for x in range(config.display.MARGEN_HORIZONTAL, config.display.ANCHO + config.display.MARGEN_HORIZONTAL + 1, config.display.TAMANO_CELDA):
+        pygame.draw.line(pantalla, (50, 50, 50), (x, config.display.MARGEN_VERTICAL), (x, config.display.ALTO + config.display.MARGEN_VERTICAL))
+    for y in range(config.display.MARGEN_VERTICAL, config.display.ALTO + config.display.MARGEN_VERTICAL + 1, config.display.TAMANO_CELDA):
+        pygame.draw.line(pantalla, (50, 50, 50), (config.display.MARGEN_HORIZONTAL, y), (config.display.ANCHO + config.display.MARGEN_HORIZONTAL, y))
 
 
 def caminar():
@@ -74,11 +75,10 @@ def caminar():
         return "derecha" if direccion == 1 else "izquierda"
 
 
-def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos,
-                       vida_inicial, num_comida, num_particulas, ALTURA_VENTANA):
+def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, config):
     fuente = pygame.font.SysFont("Courier New", 16)
     info_debug = [
-        f"Ciclo: {ciclo + 1}/{num_ciclos}",
+        f"Ciclo: {ciclo + 1}/{config.simulation.num_ciclos}",
         f"Partículas: {len(bacterias)}",
         f"Comida restante: {len(posiciones_comida)}"
     ]
@@ -89,7 +89,7 @@ def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos
     # Información de bacterias en blanco
     for i, bacteria in enumerate(bacterias):
         cuenta_trazas = bacteria.trazas.get(bacteria.posicion, 0)
-        info_bacteria = f"Bacteria {bacteria.id}: Vida {bacteria.vida}/{vida_inicial}, {'Comió' if bacteria.comio_comida else 'No comió'}, Trazas: {cuenta_trazas}"
+        info_bacteria = f"Bacteria {bacteria.id}: Vida {bacteria.vida}/{config.simulation.vida_inicial}, {'Comió' if bacteria.comio_comida else 'No comió'}, Trazas: {cuenta_trazas}"
         texto = fuente.render(info_bacteria, True, (255, 255, 255))
         pantalla.blit(texto, (10, 70 + i * 40))
 
@@ -100,17 +100,17 @@ def dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, num_ciclos
 
     info_parametros = [
         f"Parámetros:",
-        f"Número de ciclos: {num_ciclos}",
-        f"Vida inicial de la bacteria: {vida_inicial}",
-        f"Número de comidas: {num_comida}",
-        f"Número de partículas: {num_particulas}"
+        f"Número de ciclos: {config.simulation.num_ciclos}",
+        f"Vida inicial de la bacteria: {config.simulation.vida_inicial}",
+        f"Número de comidas: {config.simulation.num_comida}",
+        f"Número de partículas: {config.simulation.num_particulas}"
     ]
     for i, linea in enumerate(info_parametros):
         texto = fuente.render(linea, True, (255, 255, 255))
-        pantalla.blit(texto, (10, ALTURA_VENTANA - (len(info_parametros) - i) * 20 - 10))
+        pantalla.blit(texto, (10, config.display.ALTO_VENTANA - (len(info_parametros) - i) * 20 - 10))
 
 
-def dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACTERIA):
+def dibujar_bacteria_con_numeros(pantalla, bacterias, config):
     fuente = pygame.font.SysFont("Courier New", 16)
     for bacteria in bacterias:
         if bacteria.imagen:
@@ -118,11 +118,11 @@ def dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACT
             pantalla.blit(bacteria.imagen, bacteria.rect)
         else:
             # Fallback al círculo si no hay imagen
-            pygame.draw.circle(pantalla, COLOR_BACTERIA, bacteria.posicion, RADIO_BACTERIA)
+            pygame.draw.circle(pantalla, config.colors.BACTERIA, bacteria.posicion, config.physics.RADIO_BACTERIA)
         
         # Dibujar el ID de la bacteria
         texto = fuente.render(str(bacteria.id), True, (255, 255, 255))
-        pantalla.blit(texto, (bacteria.posicion[0] + RADIO_BACTERIA, bacteria.posicion[1] - RADIO_BACTERIA))
+        pantalla.blit(texto, (bacteria.posicion[0] + config.physics.RADIO_BACTERIA, bacteria.posicion[1] - config.physics.RADIO_BACTERIA))
 
 
 def resolver_competencia_comida(bacterias_competidoras):
@@ -130,14 +130,14 @@ def resolver_competencia_comida(bacterias_competidoras):
     return random.choice(bacterias_competidoras)
 
 
-def dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, num_comida_actual, vida_inicial, resource_manager, MARGEN_VERTICAL):
+def dibujar_info_boxes(pantalla, ciclo, config, bacterias_vivas, num_comida_actual, resource_manager):
     """Dibuja los cuadros de información en la parte superior"""
     box_width = 150
     box_height = 40
     box_margin = 20
     icon_size = 30
     start_x = 300  # Posición inicial X ajustada
-    y = MARGEN_VERTICAL // 2 - box_height // 2  # Centrado verticalmente en el margen superior
+    y = config.display.MARGEN_VERTICAL // 2 - box_height // 2  # Centrado verticalmente en el margen superior
     
     # Configuración de fuente personalizada
     try:
@@ -150,18 +150,21 @@ def dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, num_comida_
     
     # Datos para los cuadros
     boxes = [
-        ("cicle-icon", f"{ciclo + 1}/{num_ciclos}"),
+        ("cicle-icon", f"{ciclo + 1}/{config.simulation.num_ciclos}"),
         ("bacteria-icon", str(len(bacterias_vivas))),
         ("food-icon", str(num_comida_actual)),
-        ("hp-icon", str(vida_inicial))
+        ("hp-icon", str(config.simulation.vida_inicial))
     ]
     
     for i, (icon_name, value) in enumerate(boxes):
         # Posición del cuadro
         box_x = start_x + (box_width + box_margin) * i
         
-        # Dibujar el borde del cuadro
-        pygame.draw.rect(pantalla, (255, 255, 255), (box_x, y, box_width, box_height), 1)
+        # Dibujar el fondo del cuadro oscuro laboratorio
+        pygame.draw.rect(pantalla, (25, 25, 30), (box_x, y, box_width, box_height))
+        
+        # Dibujar el borde del cuadro (color más sutil, sin brillo total)
+        pygame.draw.rect(pantalla, (100, 100, 120), (box_x, y, box_width, box_height), 1)
         
         # Cargar y dibujar el icono
         icon = resource_manager.get_scaled_image(icon_name, (icon_size, icon_size))
@@ -170,62 +173,66 @@ def dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, num_comida_
             icon_y = y + (box_height - icon_size) // 2
             pantalla.blit(icon, (icon_x, icon_y))
         
-        # Dibujar el texto
-        texto = fuente.render(value, True, (255, 255, 255))
+        # Dibujar el texto en colores terminal (Gris perla)
+        texto = fuente.render(value, True, (200, 220, 200))
         text_x = box_x + icon_size + 10
         text_y = y + (box_height - texto.get_height()) // 2
         pantalla.blit(texto, (text_x, text_y))
 
 
-def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
-                        COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
-                        RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                        num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA, ANCHO_VENTANA, debug):
+def ejecutar_simulacion(pantalla, reloj, config):
     
     resource_manager = ResourceManager()
     # Aumentar el tamaño de la comida (multiplicar RADIO_COMIDA por 3 en lugar de 2)
-    food_image = resource_manager.get_scaled_image('food', (RADIO_COMIDA * 8, RADIO_COMIDA * 8))
+    food_image = resource_manager.get_scaled_image('food', (config.physics.RADIO_COMIDA * 8, config.physics.RADIO_COMIDA * 8))
     
     # Crear bacterias sin verificar posiciones ocupadas
-    bacterias = [
-        Bacteria(
+    bacterias = []
+    for i in range(config.simulation.num_particulas):
+        b = Bacteria(
             i + 1,
-            generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
-            vida_inicial
-        ) for i in range(num_particulas)
-    ]
+            generar_inicio_bacteria(config.display.ANCHO, config.display.ALTO, config.display.TAMANO_CELDA, config.display.MARGEN_HORIZONTAL, config.display.MARGEN_VERTICAL),
+            config.simulation.vida_inicial
+        )
+        b.cargar_imagen(int(config.display.TAMANO_CELDA * 0.75))
+        bacterias.append(b)
     
-    # Cargar imagen para cada bacteria con tamaño reducido
-    for bacteria in bacterias:
-        bacteria.cargar_imagen(int(TAMANO_CELDA * 0.75))  # Reducir el tamaño al 75%
+    # Imagen cargada directamente mediante el constructor y param
+    # No es necesario cargar manualmente al reducir variables
+    pass
 
-    # Modificar la función para dibujar comida
     def dibujar_comida(pantalla, posiciones_comida):
-        if food_image:
-            for pos in posiciones_comida:
-                rect = food_image.get_rect(center=pos)
-                pantalla.blit(food_image, rect)
-        else:
-            for pos in posiciones_comida:
-                pygame.draw.circle(pantalla, COLOR_COMIDA, pos, RADIO_COMIDA)
+        # food_image está garantizado de ser un pygame.Surface ya sea real o de fallback
+        for pos in posiciones_comida:
+            rect = food_image.get_rect(center=pos)
+            pantalla.blit(food_image, rect)
 
-    posiciones_comida = generar_comida(num_comida, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
+    posiciones_comida = generar_comida(config.simulation.num_comida, config.display.ANCHO, config.display.ALTO, config.display.TAMANO_CELDA, config.display.MARGEN_HORIZONTAL, config.display.MARGEN_VERTICAL)
 
     ciclos_restantes = 0  # Inicializar en 0 en lugar de num_ciclos
-    bacterias_iniciales = num_particulas
-    comida_inicial = num_comida
+    bacterias_iniciales = config.simulation.num_particulas
+    comida_inicial = config.simulation.num_comida
 
-    for ciclo in range(num_ciclos):
-        print(f"\n=== CICLO {ciclo + 1} ===")
+    # Add HUD "Salir" Button
+    from gui import LabButton
+    btn_font = pygame.font.SysFont("Courier New", 18, bold=True)
+    # Position top-right
+    btn_salir_rect = pygame.Rect(config.display.ANCHO_VENTANA - 120, 10, 100, 30)
+    btn_salir = LabButton(btn_salir_rect, "Salir", btn_font, config)
+
+    for ciclo in range(config.simulation.num_ciclos):
+        if config.debug:
+            print(f"\n=== CICLO {ciclo + 1} ===")
         # Imprimir posiciones y velocidades iniciales
         print("\nPosiciones de las bacterias:")
         for bacteria in bacterias:
             print(f"Bacteria {bacteria.id}: Posición {bacteria.posicion}, Velocidad: {bacteria.velocidad}")
 
-        ultimo_tiempo_movimiento = pygame.time.get_ticks()
+        # Removemos get_ticks en favor de un acumulador delta_time
+        tiempo_acumulado = 0.0
 
         if len(bacterias) == 0:
-            ciclos_restantes = num_ciclos - ciclo
+            ciclos_restantes = config.simulation.num_ciclos - ciclo
             break
 
         while any(bacteria.vida > 0 for bacteria in bacterias):
@@ -235,21 +242,31 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                     sys.exit()
                 elif evento.type == pygame.KEYDOWN:
                     if evento.mod & pygame.KMOD_CTRL and evento.key == pygame.K_d:
-                        debug = not debug
+                        config.debug = not config.debug
+                        
+                if btn_salir.handle_event(evento):
+                    return "menu"
 
-            pantalla.fill(COLOR_FONDO)
-            dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
+            pantalla.fill(config.colors.FONDO)
+            dibujar_cuadricula(pantalla, config)
             dibujar_comida(pantalla, posiciones_comida)
 
-            if debug:
+            if config.debug:
                 for bacteria in bacterias:
                     for punto, cuenta in bacteria.trazas.items():
-                        color = COLOR_SUPERPOSICION_TRAZA if cuenta > 1 else COLOR_TRAZA
+                        color = config.colors.SUPERPOSICION_TRAZA if cuenta > 1 else config.colors.TRAZA
                         pygame.draw.circle(pantalla, color, punto, 3)
 
-            tiempo_actual = pygame.time.get_ticks()
-            if tiempo_actual - ultimo_tiempo_movimiento >= INTERVALO_MOVIMIENTO:
-                ultimo_tiempo_movimiento = tiempo_actual
+            delta_time = reloj.tick(60)
+            # Evitar aceleraciones bruscas si el tick inicial fue muy largo (ej. tras cargar o inicializar)
+            if delta_time > 100:
+                delta_time = 100
+                
+            tiempo_acumulado += delta_time
+            
+            # Update de la lógica de simulación en pasos fijos discretos
+            if tiempo_acumulado >= config.physics.INTERVALO_MOVIMIENTO:
+                tiempo_acumulado -= config.physics.INTERVALO_MOVIMIENTO
 
                 # Diccionario para rastrear qué bacterias intentan comer cada comida
                 competencia_comida = {}
@@ -260,9 +277,8 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                         continue
 
                     posicion_anterior = bacteria.posicion
-                    # Pasar todas las bacterias excepto la actual como otras_bacterias
-                    otras_bacterias = [b for b in bacterias if b.id != bacteria.id]
-                    comidas_encontradas = bacteria.mover(TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida, otras_bacterias)
+                    # Optimización: pasar lista completa y evitar recrear 'otras_bacterias' en memoria en cada iteración
+                    comidas_encontradas = bacteria.mover(config, posiciones_comida, bacterias)
                     
                     # Imprimir cuando una bacteria se mueve
                     if posicion_anterior != bacteria.posicion:
@@ -278,8 +294,7 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
                     # Verificar colisiones en la posición final
                     for posicion_comida in posiciones_comida:
-                        if bacteria.verificar_colision(posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO,
-                                                       TAMANO_CELDA):
+                        if bacteria.verificar_colision(posicion_comida, config):
                             if posicion_comida not in competencia_comida:
                                 competencia_comida[posicion_comida] = []
                             competencia_comida[posicion_comida].append(bacteria)
@@ -302,34 +317,31 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
 
                         comidas_para_eliminar.append(posicion_comida)
 
-                # Eliminar las comidas consumidas
+                # Eliminar las comidas consumidas mediante .discard() que es O(1) para sets
                 for comida in comidas_para_eliminar:
-                    if comida in posiciones_comida:
-                        posiciones_comida.remove(comida)
+                    posiciones_comida.discard(comida)
 
-            pantalla.fill(COLOR_FONDO)
-            dibujar_cuadricula(pantalla, ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL)
+            pantalla.fill(config.colors.FONDO)
+            dibujar_cuadricula(pantalla, config)
             dibujar_comida(pantalla, posiciones_comida)
-            dibujar_bacteria_con_numeros(pantalla, bacterias, COLOR_BACTERIA, RADIO_BACTERIA)
+            dibujar_bacteria_con_numeros(pantalla, bacterias, config)
             
             # Dibujar los cuadros de información siempre (en modo debug y no debug)
             bacterias_vivas = [b for b in bacterias if b.vida > 0]
-            dibujar_info_boxes(pantalla, ciclo, num_ciclos, bacterias_vivas, 
-                             len(posiciones_comida), vida_inicial, resource_manager, 
-                             MARGEN_VERTICAL)
+            dibujar_info_boxes(pantalla, ciclo, config, bacterias_vivas, 
+                             len(posiciones_comida), resource_manager)
+            btn_salir.draw(pantalla)
 
-            if debug:
+            if config.debug:
                 for bacteria in bacterias:
                     for punto, cuenta in bacteria.trazas.items():
-                        color = COLOR_SUPERPOSICION_TRAZA if cuenta > 1 else COLOR_TRAZA
+                        color = config.colors.SUPERPOSICION_TRAZA if cuenta > 1 else config.colors.TRAZA
                         pygame.draw.circle(pantalla, color, punto, 3)
-                dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida,
-                                   num_ciclos, vida_inicial, num_comida, num_particulas, ALTURA_VENTANA)
+                dibujar_info_debug(pantalla, ciclo, bacterias, posiciones_comida, config)
                 for bacteria in bacterias:
                     pygame.draw.circle(pantalla, (100, 100, 100), bacteria.posicion, 
                                      bacteria.campo_repulsion, 1)
             pygame.display.flip()
-            reloj.tick(60)
 
         # Al final de cada ciclo, antes de crear nuevas bacterias
         bacterias_sobrevivientes = []
@@ -348,20 +360,52 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
         for bacteria_anterior in bacterias_sobrevivientes:
             nueva_bacteria = Bacteria(
                 bacteria_anterior.id,  # Mantener el ID original
-                generar_inicio_bacteria(ANCHO, ALTO, TAMANO_CELDA, MARGEN_HORIZONTAL, MARGEN_VERTICAL),
-                vida_inicial
+                generar_inicio_bacteria(config.display.ANCHO, config.display.ALTO, config.display.TAMANO_CELDA, config.display.MARGEN_HORIZONTAL, config.display.MARGEN_VERTICAL),
+                config.simulation.vida_inicial
             )
             nueva_bacteria.velocidad = bacteria_anterior.velocidad_siguiente_ciclo
             nueva_bacteria.velocidad_siguiente_ciclo = bacteria_anterior.velocidad_siguiente_ciclo
-            nueva_bacteria.cargar_imagen(TAMANO_CELDA)  # Cargar la imagen para la nueva bacteria
+            nueva_bacteria.cargar_imagen(int(config.display.TAMANO_CELDA * 0.75))
             bacterias.append(nueva_bacteria)
 
         pygame.time.delay(500)
 
-    # Modificar la condición para mostrar la pantalla final
-    fuente_grande = pygame.font.SysFont("Courier New", 32)
-    fuente_pequena = pygame.font.SysFont("Courier New", 24)
+    # End-game display logic (Modal style rather than wiping the screen)
+    fuente_grande = pygame.font.SysFont("Courier New", 32, bold=True)
+    fuente_pequena = pygame.font.SysFont("Courier New", 20)
     
+    # Pre-render statistics
+    mensaje_estado = "AGOTAMIENTO DE RECURSOS" if len(bacterias) == 0 else "CICLO DE SIMULACION COMPLETADO"
+    estadisticas = [
+        mensaje_estado,
+        "",
+        f"Ciclos ejecutados: {config.simulation.num_ciclos - ciclos_restantes}",
+        f"Poblacion inicial: {bacterias_iniciales}",
+        f"Poblacion final: {len(bacterias)}",
+        f"Nutrientes iniciales: {comida_inicial}",
+        f"Nutrientes restantes: {len(posiciones_comida)}",
+        "",
+        "[PRESIONA ESC PARA SALIR]"
+    ]
+    
+    # Calculate Modal dimensions
+    modal_ancho = 500
+    modal_alto = 400
+    modal_x = config.display.ANCHO_VENTANA // 2 - modal_ancho // 2
+    modal_y = config.display.ALTO_VENTANA // 2 - modal_alto // 2
+    modal_rect = pygame.Rect(modal_x, modal_y, modal_ancho, modal_alto)
+
+    # Creating a semi-transparent surface for the frosted glass effect
+    overlay = pygame.Surface((config.display.ANCHO_VENTANA, config.display.ALTO_VENTANA))
+    overlay.set_alpha(180) # Darken background
+    overlay.fill((10, 10, 15))
+
+    # Add Return Button
+    from gui import LabButton
+    btn_font = pygame.font.SysFont("Courier New", 24, bold=True)
+    btn_rect = pygame.Rect(modal_x + modal_ancho // 2 - 120, modal_y + modal_alto - 70, 240, 40)
+    btn_volver = LabButton(btn_rect, "Volver al Menu", btn_font, config)
+
     while True:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -369,30 +413,36 @@ def ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARG
                 sys.exit()
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
+                    return "menu"
+                    
+            if btn_volver.handle_event(evento):
+                return "menu"
 
-        pantalla.fill((0, 0, 0))
+        # We DO NOT call pantalla.fill(0,0,0) here, we want the frozen petri-dish underneath!
+        pantalla.blit(overlay, (0, 0))
+        
+        # Modal Background (Terminal Style)
+        pygame.draw.rect(pantalla, (25, 25, 30), modal_rect)
+        pygame.draw.rect(pantalla, (100, 200, 100), modal_rect, 2) # Accent border
+        
+        # Internal Padding Modal Line
+        inner_rect = modal_rect.inflate(-20, -20)
+        pygame.draw.rect(pantalla, (50, 50, 60), inner_rect, 1)
 
-        # Estadísticas finales
-        mensaje_estado = "No hay bacterias vivas." if len(bacterias) == 0 else "Simulación completada."
-        estadisticas = [
-            mensaje_estado,
-            f"Ciclos ejecutados: {num_ciclos - ciclos_restantes}",
-            f"Ciclos no ejecutados: {ciclos_restantes}",
-            f"Bacterias iniciales: {bacterias_iniciales}",
-            f"Bacterias finales: {len(bacterias)}",
-            f"Comida inicial: {comida_inicial}",
-            f"Comida restante: {len(posiciones_comida)}",
-            "",
-            "Presiona ESC para salir"
-        ]
-
-        # Mostrar cada línea de estadísticas
+        # Draw Statistics
+        start_text_y = modal_y + 40
         for i, linea in enumerate(estadisticas):
-            texto = fuente_grande.render(linea, True, (255, 255, 255))
-            rect_texto = texto.get_rect(center=(ANCHO_VENTANA // 2, 200 + i * 50))
+            if i == 0: # Header
+                texto = fuente_grande.render(linea, True, (150, 220, 150))
+            elif i == len(estadisticas) - 1: # Footer
+                texto = fuente_pequena.render(linea, True, (120, 120, 140))
+            else: # Body
+                texto = fuente_pequena.render(linea, True, (200, 220, 200))
+                
+            rect_texto = texto.get_rect(center=(config.display.ANCHO_VENTANA // 2, start_text_y + i * 30))
             pantalla.blit(texto, rect_texto)
+
+        btn_volver.draw(pantalla)
 
         pygame.display.flip()
         reloj.tick(60)

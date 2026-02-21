@@ -1,45 +1,58 @@
 import pygame
-from input_window import solicitar_datos
+from config_menu import solicitar_datos_pygame
 from simulation import ejecutar_simulacion
 from main_menu import MainMenu
+from config import GameConfig, SimulationConfig
+from help_menu import mostrar_pantalla_ayuda
 
-# Configuración inicial
-ANCHO_VENTANA, ALTO_VENTANA = 1920, 1080  # Aumentado a 1920x1080
-MARGEN = 120  # Aumentado proporcionalmente
-TAMANO_CELDA = 40  # Aumentado para mejor visibilidad
-
-ANCHO = (ANCHO_VENTANA - 2 * MARGEN) // TAMANO_CELDA * TAMANO_CELDA
-ALTO = (ALTO_VENTANA - 2 * MARGEN) // TAMANO_CELDA * TAMANO_CELDA
-
-MARGEN_HORIZONTAL = (ANCHO_VENTANA - ANCHO) // 2
-MARGEN_VERTICAL = (ALTO_VENTANA - ALTO) // 2
-
-COLOR_FONDO = (0, 0, 0)
-COLOR_BACTERIA = (0, 255, 0)
-COLOR_TRAZA = (255, 255, 0)
-COLOR_SUPERPOSICION_TRAZA = (255, 0, 0)
-COLOR_COMIDA = (255, 0, 255)
-
-RADIO_COMIDA = 5
-RADIO_BACTERIA = 6
-DISTANCIA_COLISION = RADIO_COMIDA + RADIO_BACTERIA
-INTERVALO_MOVIMIENTO = 500
+# Crear instancia central de configuración
+config = GameConfig()
 
 pygame.init()
-pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
+pantalla = pygame.display.set_mode((config.display.ANCHO_VENTANA, config.display.ALTO_VENTANA))
 pygame.display.set_caption("Simulación de Bacteria")
 reloj = pygame.time.Clock()
 
 def principal():
-    menu = MainMenu(pantalla)
-    if menu.run():  # Si el usuario presiona "Empezar"
-        resultado = solicitar_datos()
-        if resultado:
-            num_ciclos, vida_inicial, num_comida, num_particulas = resultado
-            ejecutar_simulacion(pantalla, reloj, ANCHO, ALTO, TAMANO_CELDA, MARGEN, MARGEN_HORIZONTAL, MARGEN_VERTICAL,
-                           COLOR_FONDO, COLOR_BACTERIA, COLOR_TRAZA, COLOR_SUPERPOSICION_TRAZA, COLOR_COMIDA,
-                           RADIO_COMIDA, RADIO_BACTERIA, DISTANCIA_COLISION, INTERVALO_MOVIMIENTO,
-                           num_ciclos, vida_inicial, num_comida, num_particulas, ALTO_VENTANA, ANCHO_VENTANA, debug=False)
+    estado = "MENU"
+    while True:
+        if estado == "MENU":
+            menu = MainMenu(pantalla)
+            resultado = menu.run()
+            if resultado == "start":
+                estado = "CONFIG"
+            elif resultado == "help":
+                estado = "HELP"
+            elif resultado is False: # Quit event
+                break
+                
+        elif estado == "HELP":
+            mostrar_pantalla_ayuda(pantalla, config)
+            estado = "MENU" # Regresa al menu principal al cerrar
+                
+        elif estado == "CONFIG":
+            resultado = solicitar_datos_pygame(pantalla, config)
+            if resultado is None: # Cancel/Back or Quit
+                estado = "MENU"
+            else:
+                num_ciclos, vida_inicial, num_comida, num_particulas = resultado
+                config.simulation = SimulationConfig(
+                    num_ciclos=num_ciclos, 
+                    vida_inicial=vida_inicial, 
+                    num_comida=num_comida, 
+                    num_particulas=num_particulas
+                )
+                estado = "SIMULATION"
+                
+        elif estado == "SIMULATION":
+            resultado = ejecutar_simulacion(pantalla, reloj, config)
+            # Returns None if Quit, returns False/True if Return To Menu was pressed
+            if resultado == "menu":
+                estado = "MENU"
+            else:
+                break # User closed app from inside simulation directly
+
+    pygame.quit()
 
 if __name__ == "__main__":
     principal()

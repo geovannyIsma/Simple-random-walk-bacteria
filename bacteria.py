@@ -52,46 +52,45 @@ class Bacteria:
             nueva_bacteria.cargar_imagen(self.tamano)
         return nueva_bacteria
 
-    def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion):
-        """Detecta comida en líneas horizontales y verticales"""
+    def detectar_comida_en_linea(self, posiciones_comida, rango_deteccion, config):
+        """Detecta comida en líneas horizontales y verticales (optimizado O(1) con sets)"""
         x, y = self.posicion
-        comida_mas_cercana = None
-        distancia_minima = float('inf')
+        pasos = int(rango_deteccion // config.display.TAMANO_CELDA)
 
-        for comida in posiciones_comida:
-            fx, fy = comida
-            # Verifica si la comida está alineada horizontal o verticalmente
-            if x == fx or y == fy:
-                distancia = abs(x - fx) + abs(y - fy)  # Distancia Manhattan
-                if distancia <= rango_deteccion and distancia < distancia_minima:
-                    distancia_minima = distancia
-                    comida_mas_cercana = comida
+        for p in range(1, pasos + 1):
+            dist = p * config.display.TAMANO_CELDA
+            
+            direcciones = [
+                (x + dist, y), # Derecha
+                (x - dist, y), # Izquierda
+                (x, y + dist), # Abajo
+                (x, y - dist)  # Arriba
+            ]
+            
+            for pos in direcciones:
+                if pos in posiciones_comida:
+                    return pos
 
-        return comida_mas_cercana
+        return None
 
-    def verificar_comida_en_trayectoria(self, inicio, fin, posiciones_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO,
-                                        TAMANO_CELDA):
+    def verificar_comida_en_trayectoria(self, inicio, fin, posiciones_comida, config):
         x1, y1 = inicio
         x2, y2 = fin
         comidas_encontradas = []
 
-        # Verificar todas las posiciones intermedias en el camino
+        # Usar la naturaleza de Set O(1) para buscar la coordenada exacta directamente
         if x1 == x2:  # Movimiento vertical
-            paso = TAMANO_CELDA if y2 > y1 else -TAMANO_CELDA
+            paso = config.display.TAMANO_CELDA if y2 > y1 else -config.display.TAMANO_CELDA
             for y in range(int(y1), int(y2) + (1 if y2 > y1 else -1), paso):
-                for comida in posiciones_comida:
-                    fx, fy = comida
-                    if abs(x1 - fx) <= DISTANCIA_COLISION and abs(y - fy) <= DISTANCIA_COLISION:
-                        if comida not in comidas_encontradas:
-                            comidas_encontradas.append(comida)
+                pos = (int(x1), int(y))
+                if pos in posiciones_comida and pos not in comidas_encontradas:
+                    comidas_encontradas.append(pos)
         elif y1 == y2:  # Movimiento horizontal
-            paso = TAMANO_CELDA if x2 > x1 else -TAMANO_CELDA
+            paso = config.display.TAMANO_CELDA if x2 > x1 else -config.display.TAMANO_CELDA
             for x in range(int(x1), int(x2) + (1 if x2 > x1 else -1), paso):
-                for comida in posiciones_comida:
-                    fx, fy = comida
-                    if abs(x - fx) <= DISTANCIA_COLISION and abs(y1 - fy) <= DISTANCIA_COLISION:
-                        if comida not in comidas_encontradas:
-                            comidas_encontradas.append(comida)
+                pos = (int(x), int(y1))
+                if pos in posiciones_comida and pos not in comidas_encontradas:
+                    comidas_encontradas.append(pos)
 
         return comidas_encontradas
 
@@ -101,12 +100,14 @@ class Bacteria:
             return False
             
         x, y = nueva_posicion
-        margen_seguridad = 25 + (self.tiempo_espera * 5)  # Aumentado de 20 a 25
+        margen_seguridad_cuadrado = (25 + (self.tiempo_espera * 5)) ** 2
         
         for otra in otras_bacterias:
+            if otra.id == self.id:
+                continue
             ox, oy = otra.posicion
-            distancia = ((x - ox) ** 2 + (y - oy) ** 2) ** 0.5
-            if distancia < margen_seguridad:
+            dist_cuadrada = (x - ox) ** 2 + (y - oy) ** 2
+            if dist_cuadrada < margen_seguridad_cuadrado:
                 return True
         return False
 
@@ -120,10 +121,11 @@ class Bacteria:
         }
         return opuestos.get(direccion)
 
-    def calcular_fuerzas_repulsion(self, otras_bacterias, TAMANO_CELDA):
+    def calcular_fuerzas_repulsion(self, otras_bacterias, config):
         """Calcula las fuerzas de repulsión de otras bacterias"""
         fx = fy = 0
         x, y = self.posicion
+        campo_cuadrado = self.campo_repulsion ** 2
         
         for otra in otras_bacterias:
             if otra.id == self.id:
@@ -132,37 +134,36 @@ class Bacteria:
             ox, oy = otra.posicion
             dx = x - ox
             dy = y - oy
-            distancia = math.sqrt(dx*dx + dy*dy)
+            dist_cuadrada = dx*dx + dy*dy
             
-            if distancia < self.campo_repulsion:
-                # Fuerza inversamente proporcional al cuadrado de la distancia
+            if dist_cuadrada < campo_cuadrado and dist_cuadrada > 0:
+                # Calculamos sqrt solo si están dentro del rango de repulsión
+                distancia = math.sqrt(dist_cuadrada)
                 fuerza = (self.campo_repulsion - distancia) * self.fuerza_repulsion
-                # Evitar división por cero
-                if distancia > 0:
-                    fx += (dx/distancia) * fuerza
-                    fy += (dy/distancia) * fuerza
+                fx += (dx/distancia) * fuerza
+                fy += (dy/distancia) * fuerza
         
         return fx, fy
 
-    def obtener_celda_actual(self, TAMANO_CELDA):
+    def obtener_celda_actual(self, config):
         """Retorna la celda de la cuadrícula en la que está la bacteria"""
         x, y = self.posicion
-        celda_x = x // TAMANO_CELDA
-        celda_y = y // TAMANO_CELDA
+        celda_x = x // config.display.TAMANO_CELDA
+        celda_y = y // config.display.TAMANO_CELDA
         return (celda_x, celda_y)
 
-    def mover(self, TAMANO_CELDA, MARGEN, ANCHO, ALTO, posiciones_comida=None, otras_bacterias=None):
+    def mover(self, config, posiciones_comida=None, otras_bacterias=None):
         x, y = self.posicion
         comidas_encontradas = []
         
         # Asegurar dirección inicial correcta
         if self.direccion_inicial is None:
             # Asignar dirección inicial basada en la posición de aparición
-            if y == MARGEN:  # Apareció arriba
+            if y == config.display.MARGEN:  # Apareció arriba
                 self.direccion_inicial = "abajo"
-            elif y >= ALTO + MARGEN:  # Apareció abajo
+            elif y >= config.display.ALTO + config.display.MARGEN:  # Apareció abajo
                 self.direccion_inicial = "arriba"
-            elif x == MARGEN:  # Apareció a la izquierda
+            elif x == config.display.MARGEN:  # Apareció a la izquierda
                 self.direccion_inicial = "derecha"
             else:  # Apareció a la derecha
                 self.direccion_inicial = "izquierda"
@@ -183,7 +184,7 @@ class Bacteria:
             
             # Detectar comida cercana
             if posiciones_comida:
-                comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, TAMANO_CELDA * 7)
+                comida_objetivo = self.detectar_comida_en_linea(posiciones_comida, config.display.TAMANO_CELDA * 7, config)
                 if comida_objetivo:
                     fx, fy = comida_objetivo
                     if abs(x - fx) > abs(y - fy):
@@ -201,21 +202,22 @@ class Bacteria:
                     dy = random.choice([-1, 1])
 
         # Calcular nueva posición
-        velocidad_efectiva = TAMANO_CELDA * self.velocidad
+        velocidad_efectiva = config.display.TAMANO_CELDA * self.velocidad
         nueva_x = x + dx * velocidad_efectiva
         nueva_y = y + dy * velocidad_efectiva
 
         # Limitar al área de juego
-        nueva_x = max(MARGEN, min(ANCHO + MARGEN - TAMANO_CELDA, nueva_x))
-        nueva_y = max(MARGEN, min(ALTO + MARGEN - TAMANO_CELDA, nueva_y))
+        nueva_x = max(config.display.MARGEN, min(config.display.ANCHO + config.display.MARGEN - config.display.TAMANO_CELDA, nueva_x))
+        nueva_y = max(config.display.MARGEN, min(config.display.ALTO + config.display.MARGEN - config.display.TAMANO_CELDA, nueva_y))
 
-        # Verificar colisiones con otras bacterias
+        # Verificar colisiones con otras bacterias de manera optimizada
         puede_moverse = True
         if otras_bacterias:
+            tamano_celda_cuadrado = config.display.TAMANO_CELDA ** 2
             for otra in otras_bacterias:
                 if otra.id != self.id:
-                    dist = math.sqrt((nueva_x - otra.posicion[0])**2 + (nueva_y - otra.posicion[1])**2)
-                    if dist < TAMANO_CELDA:
+                    dist_cuadrada = (nueva_x - otra.posicion[0])**2 + (nueva_y - otra.posicion[1])**2
+                    if dist_cuadrada < tamano_celda_cuadrado:
                         puede_moverse = False
                         break
 
@@ -223,8 +225,7 @@ class Bacteria:
             # Verificar comida en el camino
             if posiciones_comida:
                 comidas_en_camino = self.verificar_comida_en_trayectoria(
-                    self.posicion, (nueva_x, nueva_y), posiciones_comida,
-                    TAMANO_CELDA / 2, MARGEN, ANCHO, ALTO, TAMANO_CELDA)
+                    self.posicion, (nueva_x, nueva_y), posiciones_comida, config)
                 
                 for comida in comidas_en_camino:
                     if comida not in self.comidas_registradas:
@@ -242,37 +243,37 @@ class Bacteria:
         self.actualizar_rect()  # Actualizar la posición del rectángulo de la imagen
         return comidas_encontradas
 
-    def mover_en_direccion(self, direccion, TAMANO_CELDA, MARGEN, ANCHO, ALTO):
+    def mover_en_direccion(self, direccion, config):
         x, y = self.posicion
-        distancia_movimiento = TAMANO_CELDA * self.velocidad
+        distancia_movimiento = config.display.TAMANO_CELDA * self.velocidad
 
         if direccion == "arriba":
-            nueva_y = max(MARGEN, y - distancia_movimiento)
+            nueva_y = max(config.display.MARGEN, y - distancia_movimiento)
             self.posicion = (x, nueva_y)
         elif direccion == "abajo":
-            nueva_y = min(ALTO + MARGEN, y + distancia_movimiento)
+            nueva_y = min(config.display.ALTO + config.display.MARGEN, y + distancia_movimiento)
             self.posicion = (x, nueva_y)
         elif direccion == "derecha":
-            nueva_x = min(ANCHO + MARGEN, x + distancia_movimiento)
+            nueva_x = min(config.display.ANCHO + config.display.MARGEN, x + distancia_movimiento)
             self.posicion = (nueva_x, y)
         else:  # izquierda
-            nueva_x = max(MARGEN, x - distancia_movimiento)
+            nueva_x = max(config.display.MARGEN, x - distancia_movimiento)
             self.posicion = (nueva_x, y)
 
         self.vida -= 1
         self.actualizar_rect()  # Actualizar la posición del rectángulo de la imagen
         return []
 
-    def verificar_colision(self, posicion_comida, DISTANCIA_COLISION, MARGEN, ANCHO, ALTO, TAMANO_CELDA):
+    def verificar_colision(self, posicion_comida, config):
         fx, fy = posicion_comida
         # Verificar que la comida está dentro del área jugable
-        if not (MARGEN <= fx <= ANCHO + MARGEN - TAMANO_CELDA and
-                MARGEN <= fy <= ALTO + MARGEN - TAMANO_CELDA):
+        if not (config.display.MARGEN <= fx <= config.display.ANCHO + config.display.MARGEN - config.display.TAMANO_CELDA and
+                config.display.MARGEN <= fy <= config.display.ALTO + config.display.MARGEN - config.display.TAMANO_CELDA):
             return False
 
         bx, by = self.posicion
-        distancia = ((bx - fx) ** 2 + (by - fy) ** 2) ** 0.5
-        if distancia <= DISTANCIA_COLISION:
+        dist_cuadrada = (bx - fx) ** 2 + (by - fy) ** 2
+        if dist_cuadrada <= (config.physics.DISTANCIA_COLISION ** 2):
             if posicion_comida not in self.comidas_registradas:
                 self.comidas_registradas.add(posicion_comida)
                 self.comidas_este_ciclo += 1

@@ -1,5 +1,6 @@
 import pygame
 import os
+from config import GameConfig
 
 class ResourceManager:
     _instance = None
@@ -13,6 +14,7 @@ class ResourceManager:
     def __init__(self):
         if not ResourceManager._initialized:
             self.images = {}
+            self.config = GameConfig()
             self.load_resources()
             ResourceManager._initialized = True
 
@@ -51,5 +53,16 @@ class ResourceManager:
             if original:
                 self.images[cache_key] = pygame.transform.scale(original, size)
             else:
-                return None
+                # Creación de fallback procedural a falta de imagen real
+                fallback = pygame.Surface(size, pygame.SRCALPHA)
+                if key == 'food':
+                    color = self.config.colors.COMIDA
+                elif key == 'bacteria':
+                    color = self.config.colors.BACTERIA
+                else:
+                    color = (255, 255, 255) # Default blanco
+                
+                pygame.draw.circle(fallback, color, (size[0]//2, size[1]//2), min(size)//2)
+                self.images[cache_key] = fallback
+                
         return self.images[cache_key]
